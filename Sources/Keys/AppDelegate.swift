@@ -4,6 +4,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var toggleItem: NSMenuItem!
     private var errorItem: NSMenuItem?
+    private var accessibilityItem: NSMenuItem?
+    private var accessibilitySeparator: NSMenuItem?
+    private var accessibilityTimer: Timer?
     private let configManager = ConfigManager()
     private let interceptor = KeyboardInterceptor()
 
@@ -113,18 +116,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let opts = [key: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(opts)
 
+        let sep = NSMenuItem.separator()
         let item = NSMenuItem(
-            title: "⚠ Grant Accessibility Access",
+            title: "Grant Accessibility Access…",
             action: #selector(openAccessibilitySettings), keyEquivalent: "")
         item.target = self
         statusItem.menu?.insertItem(item, at: 0)
-        statusItem.menu?.insertItem(.separator(), at: 1)
+        statusItem.menu?.insertItem(sep, at: 1)
+        accessibilityItem = item
+        accessibilitySeparator = sep
+
+        toggleItem.title = "Keys is OFF (no permission)"
+        toggleItem.action = nil
+
+        // Poll until permission is granted
+        accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            if AXIsProcessTrusted() {
+                self.accessibilityGranted()
+            }
+        }
+    }
+
+    private func accessibilityGranted() {
+        accessibilityTimer?.invalidate()
+        accessibilityTimer = nil
+
+        if let item = accessibilityItem { statusItem.menu?.removeItem(item) }
+        if let sep = accessibilitySeparator { statusItem.menu?.removeItem(sep) }
+        accessibilityItem = nil
+        accessibilitySeparator = nil
+
+        toggleItem.title = "Keys is ON"
+        toggleItem.action = #selector(toggle)
+
+        if interceptor.start() {
+            configManager.load() // apply config to the now-running interceptor
+        }
     }
 
     @objc private func openAccessibilitySettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
     }
 }
 
