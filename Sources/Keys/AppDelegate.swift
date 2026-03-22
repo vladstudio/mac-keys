@@ -49,11 +49,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let reload = NSMenuItem(
-            title: "Reload Config", action: #selector(reloadConfig), keyEquivalent: "r")
-        reload.target = self
-        menu.addItem(reload)
-
         let edit = NSMenuItem(
             title: "Edit Config", action: #selector(editConfig), keyEquivalent: "e")
         edit.target = self
@@ -85,10 +80,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         interceptor.isEnabled.toggle()
         toggleItem.title = interceptor.isEnabled ? "Keys is ON" : "Keys is OFF"
         updateIcon()
-    }
-
-    @objc private func reloadConfig() {
-        configManager.load()
     }
 
     @objc private func editConfig() {
