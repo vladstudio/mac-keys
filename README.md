@@ -53,7 +53,7 @@ Map a key combo to `snippets` to open the snippet picker.
 
 One snippet per line — the text that will be pasted. For multi-line snippets, wrap in double quotes (RFC 4180). Use `""` to escape a literal `"`.
 
-When the snippet picker opens, type to filter, use arrow keys to navigate, Enter to paste, Escape to close.
+When the snippet picker opens, type to filter, use arrow keys to navigate, Enter to paste, Escape to close. Search is fuzzy — it prioritizes matches at word boundaries (e.g. `tk` finds `test@kadoa.com`) and prefers matches closer to the start of a snippet.
 
 ### Key names
 

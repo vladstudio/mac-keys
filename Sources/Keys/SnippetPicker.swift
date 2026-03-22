@@ -79,9 +79,57 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
 
     private func refilter() {
         let q = search.stringValue.lowercased()
-        filtered = q.isEmpty ? all : all.filter { $0.localizedCaseInsensitiveContains(q) }
+        if q.isEmpty {
+            filtered = all
+        } else {
+            let scored = all.compactMap { s -> (String, Int)? in
+                guard let score = fuzzyScore(query: q, target: s.lowercased()) else { return nil }
+                return (s, score)
+            }
+            filtered = scored.sorted { $0.1 > $1.1 }.map { $0.0 }
+        }
         table.reloadData()
         if !filtered.isEmpty { table.selectRowIndexes([0], byExtendingSelection: false) }
+    }
+
+    private func fuzzyScore(query: String, target: String) -> Int? {
+        let q = Array(query), t = Array(target)
+        guard !t.isEmpty else { return nil }
+
+        var wordStart = [Bool](repeating: false, count: t.count)
+        wordStart[0] = true
+        for i in 1..<t.count where !t[i - 1].isLetter && !t[i - 1].isNumber {
+            wordStart[i] = true
+        }
+
+        var score = 0, ti = 0, prev = -1, first = -1
+
+        for qc in q {
+            // Prefer consecutive match to keep runs together
+            if prev >= 0 {
+                let next = prev + 1
+                if next < t.count && t[next] == qc {
+                    score += 7
+                    if wordStart[next] { score += 10 }
+                    if next == 0 { score += 8 }
+                    prev = next; ti = next + 1; continue
+                }
+            }
+            // Then word-start match, then any match
+            var ws: Int?, any: Int?
+            for j in ti..<t.count where t[j] == qc {
+                if any == nil { any = j }
+                if wordStart[j] { ws = j; break }
+            }
+            guard let idx = ws ?? any else { return nil }
+            if wordStart[idx] { score += 10 }
+            if idx == 0 { score += 8 }
+            if first < 0 { first = idx }
+            prev = idx; ti = idx + 1
+        }
+
+        score -= first // earlier first match wins
+        return score
     }
 
     private func dismiss() {
