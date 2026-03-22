@@ -174,10 +174,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         toggleItem.title = "Keys is OFF (no permission)"
         toggleItem.action = nil
 
-        // Poll until permission is granted
+        // Poll until permission is granted (AXIsProcessTrusted can cache; try the tap directly)
         accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            if AXIsProcessTrusted() {
+            if self.interceptor.start() {
                 self.accessibilityGranted()
             }
         }
@@ -195,9 +195,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         toggleItem.title = "Keys is ON"
         toggleItem.action = #selector(toggle)
 
-        if interceptor.start() {
-            configManager.load() // apply config to the now-running interceptor
-        }
+        configManager.load() // apply config to the now-running interceptor
     }
 
     @objc private func openAccessibilitySettings() {
