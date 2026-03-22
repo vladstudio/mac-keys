@@ -30,7 +30,11 @@ enum KeyCodes {
         "control": 0x3B, "right_control": 0x3E,
         "option": 0x3A, "right_option": 0x3D,
         "command": 0x37, "right_command": 0x36,
+        // Virtual
+        "snippets": snippetPickerKeyCode,
     ]
+
+    static let snippetPickerKeyCode: UInt16 = 0xFFFF
 
     static let modifierKeyCodes: Set<UInt16> = [
         0x38, 0x3C, // shift

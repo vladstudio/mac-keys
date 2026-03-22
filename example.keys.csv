@@ -12,9 +12,10 @@
 [remap]
 caps_lock,f20
 option+shift+a,control+b
-"option, option",f19
+"control, control",snippets
 
 [snippet]
-:hi,Hello world
-:sig,"Best regards,
+Hello world
+my.email@example.com
+"Best regards,
 Steve"

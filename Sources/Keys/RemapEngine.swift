@@ -14,6 +14,7 @@ class RemapEngine {
     enum Result {
         case passThrough
         case consumed
+        case showPicker
     }
 
     func update(rules: [RemapRule]) {
@@ -55,6 +56,7 @@ class RemapEngine {
             guard !KeyCodes.modifierKeyCodes.contains(combo.keyCode) else { continue }
             let relevant = flags.intersection(KeyCombo.modifierMask)
             if combo.keyCode == keyCode && combo.modifiers == relevant {
+                if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
                 activeKeyRemaps[keyCode] = rule.output
                 EventEmitter.emit(keyCode: rule.output.keyCode, flags: rule.output.modifiers, keyDown: true)
                 return .consumed
@@ -109,6 +111,7 @@ class RemapEngine {
                     lastModifierTap = nil
                     pendingModifierDown = nil
                     suppressingModifier = keyCode
+                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }
@@ -134,11 +137,11 @@ class RemapEngine {
             if keyCode == 0x39 {
                 if combo.modifiers.isEmpty {
                     suppressingModifier = keyCode
+                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }
             } else {
-                // The pressed modifier's own flag is in `flags`, so include it in expected set
                 let relevant = flags.intersection(KeyCombo.modifierMask)
                 var expected = combo.modifiers
                 if let flag = KeyCodes.keyCodeToModifierFlag[keyCode] {
@@ -146,6 +149,7 @@ class RemapEngine {
                 }
                 if relevant == expected {
                     suppressingModifier = keyCode
+                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }

@@ -18,12 +18,7 @@ struct RemapRule {
     let output: KeyCombo
 }
 
-struct SnippetRule {
-    let trigger: String
-    let replacement: String
-}
-
 struct Config {
     var remaps: [RemapRule] = []
-    var snippets: [SnippetRule] = []
+    var snippets: [String] = []
 }

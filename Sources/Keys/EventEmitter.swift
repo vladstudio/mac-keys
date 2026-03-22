@@ -1,12 +1,8 @@
 import AppKit
-import CoreGraphics
 
 enum EventEmitter {
     /// Magic value to tag events we emit, so we can skip them in the tap callback.
     static let marker: Int64 = 0x4B455953 // "KEYS"
-
-    /// Delay between synthetic events in microseconds.
-    private static let interEventDelay: useconds_t = 11_000 // 11 ms
 
     private static var savedClipboard: [[NSPasteboard.PasteboardType: Data]]?
     private static var restoreWorkItem: DispatchWorkItem?
@@ -24,43 +20,23 @@ enum EventEmitter {
         emit(keyCode: keyCode, flags: flags, keyDown: false)
     }
 
-    /// Emit a snippet expansion: delete trigger characters with delays, then paste replacement.
-    static func emitSnippet(deleteCount: Int, replacement: String) {
-        DispatchQueue.main.async {
-            // Delete trigger characters with delays between each
-            for _ in 0..<deleteCount {
-                emit(keyCode: 0x33, keyDown: true)
-                usleep(interEventDelay)
-                emit(keyCode: 0x33, keyDown: false)
-                usleep(interEventDelay)
+    /// Paste text via clipboard Cmd+V, saving and restoring the original clipboard.
+    static func pasteText(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        restoreWorkItem?.cancel()
+        if savedClipboard == nil { savedClipboard = savePasteboard(pasteboard) }
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        emit(keyCode: 0x09, flags: .maskCommand, keyDown: true)
+        emit(keyCode: 0x09, flags: .maskCommand, keyDown: false)
+        let workItem = DispatchWorkItem {
+            if let saved = savedClipboard {
+                restorePasteboard(pasteboard, from: saved)
+                savedClipboard = nil
             }
-
-            // Paste replacement via clipboard
-            let pasteboard = NSPasteboard.general
-
-            restoreWorkItem?.cancel()
-            if savedClipboard == nil {
-                savedClipboard = savePasteboard(pasteboard)
-            }
-
-            pasteboard.clearContents()
-            pasteboard.setString(replacement, forType: .string)
-
-            // Cmd+V
-            emit(keyCode: 0x09, flags: .maskCommand, keyDown: true)
-            usleep(interEventDelay)
-            emit(keyCode: 0x09, flags: .maskCommand, keyDown: false)
-
-            // Restore clipboard after paste is processed
-            let workItem = DispatchWorkItem {
-                if let saved = savedClipboard {
-                    restorePasteboard(pasteboard, from: saved)
-                    savedClipboard = nil
-                }
-            }
-            restoreWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
         }
+        restoreWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
     }
 
     // MARK: - Private

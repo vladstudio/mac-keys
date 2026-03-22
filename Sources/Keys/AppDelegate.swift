@@ -9,8 +9,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var accessibilityTimer: Timer?
     private let configManager = ConfigManager()
     private let interceptor = KeyboardInterceptor()
+    private let snippetPicker = SnippetPicker()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        interceptor.snippetPicker = snippetPicker
         setupMenu()
         configManager.delegate = self
         configManager.load()

@@ -49,11 +49,9 @@ enum ConfigParser {
                 throw Error.noSection(i + 1)
             }
 
-            // Parse CSV line: two comma-separated fields (RFC 4180 quoting)
-            let (first, second, linesConsumed) = try parseCSVLine(lines: lines, startIndex: i)
-
             switch sec {
             case "remap":
+                let (first, second, linesConsumed) = try parseCSVLine(lines: lines, startIndex: i)
                 guard let input = KeyCodes.parseInput(first) else {
                     throw Error.unknownKey(i + 1, first)
                 }
@@ -61,13 +59,20 @@ enum ConfigParser {
                     throw Error.unknownKey(i + 1, second)
                 }
                 config.remaps.append(RemapRule(input: input, output: output))
+                i += linesConsumed
+                continue
             case "snippet":
-                config.snippets.append(SnippetRule(trigger: first, replacement: second))
+                let remaining = lines[i...].joined(separator: "\n")
+                let (text, afterField) = try readCSVField(remaining, from: remaining.startIndex, line: i + 1)
+                let linesConsumed = remaining[remaining.startIndex..<afterField].filter { $0 == "\n" }.count + 1
+                config.snippets.append(text)
+                i += linesConsumed
+                continue
             default:
                 break
             }
 
-            i += linesConsumed
+            i += 1
         }
 
         return config

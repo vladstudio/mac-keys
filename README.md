@@ -2,10 +2,10 @@
 
 <img src="keys app icon.png" width="128" alt="Keys icon">
 
-A macOS menu bar app that remaps keys and expands text snippets.
+A macOS menu bar app that remaps keys and pastes text snippets.
 
 - **Key remapping** — single keys, modifier combos, double-tap sequences
-- **Text expansion** — type a trigger, get it replaced instantly
+- **Snippet picker** — trigger a floating picker with a keystroke, filter and paste
 - **Plain text config** — edit `~/.keys.csv`, changes apply automatically
 
 ## Requirements
@@ -34,19 +34,30 @@ Edit `~/.keys.csv`:
 [remap]
 caps_lock,f20
 option+shift+a,control+b
-"option, option",f19
+"control, control",snippets
 
 [snippet]
-:hi,Hello world
-:sig,"Best regards,
+Hello world
+my.email@example.com
+"Best regards,
 Steve"
 ```
+
+### Remaps
+
+One rule per line: `input,output`. Combine modifiers with `+`: `option+shift+a`. Sequences use `, ` inside quotes: `"option, option"`.
+
+Map a key combo to `snippets` to open the snippet picker.
+
+### Snippets
+
+One snippet per line — the text that will be pasted. For multi-line snippets, wrap in double quotes (RFC 4180). Use `""` to escape a literal `"`.
+
+When the snippet picker opens, type to filter, use arrow keys to navigate, Enter to paste, Escape to close.
 
 ### Key names
 
 `a`–`z`, `0`–`9`, `f1`–`f20`, `return`, `tab`, `space`, `delete`, `escape`, `caps_lock`, `forward_delete`, `up`, `down`, `left`, `right`, `minus`, `equal`, `left_bracket`, `right_bracket`, `backslash`, `semicolon`, `quote`, `grave`, `comma`, `period`, `slash`, `shift`, `control`, `option`, `command` (and `right_*` variants).
-
-Combine modifiers with `+`: `option+shift+a`. Sequences with `, `: `"option, option"`.
 
 ## License
 

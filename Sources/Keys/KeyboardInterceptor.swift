@@ -3,8 +3,9 @@ import Foundation
 
 class KeyboardInterceptor {
     let remapEngine = RemapEngine()
-    let snippetEngine = SnippetEngine()
     var isEnabled = true
+    var snippetPicker: SnippetPicker?
+    private(set) var snippets: [String] = []
 
     private var eventTap: CFMachPort?
 
@@ -42,7 +43,7 @@ class KeyboardInterceptor {
 
     func update(config: Config) {
         remapEngine.update(rules: config.remaps)
-        snippetEngine.update(rules: config.snippets)
+        snippets = config.snippets
     }
 
     // MARK: - Event handling
@@ -52,7 +53,6 @@ class KeyboardInterceptor {
     ) -> Unmanaged<CGEvent>? {
         let pass = Unmanaged.passUnretained(event)
 
-        // Re-enable tap if the system disabled it
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
@@ -60,33 +60,26 @@ class KeyboardInterceptor {
             return pass
         }
 
-        // Skip our own synthetic events
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
             return pass
         }
 
         guard isEnabled else { return pass }
 
-        // 1. Remap engine
         switch remapEngine.handleEvent(event: event, type: type) {
         case .consumed:
             return nil
+        case .showPicker:
+            DispatchQueue.main.async { self.snippetPicker?.show(snippets: self.snippets) }
+            return nil
         case .passThrough:
             break
-        }
-
-        // 2. Snippet engine (only for keyDown)
-        if type == .keyDown {
-            if snippetEngine.handleKeyDown(event: event) {
-                return nil
-            }
         }
 
         return pass
     }
 }
 
-// C-function callback for CGEvent.tapCreate
 private func tapCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
