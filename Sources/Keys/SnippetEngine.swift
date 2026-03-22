@@ -31,8 +31,7 @@ class SnippetEngine {
         for rule in rules {
             if buffer.hasSuffix(rule.trigger) {
                 let deleteCount = rule.trigger.count - 1
-                EventEmitter.emitBackspaces(deleteCount)
-                EventEmitter.emitText(rule.replacement)
+                EventEmitter.emitSnippet(deleteCount: deleteCount, replacement: rule.replacement)
                 buffer = ""
                 return true
             }
