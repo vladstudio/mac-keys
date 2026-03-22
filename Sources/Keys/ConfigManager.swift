@@ -10,7 +10,7 @@ class ConfigManager {
 
     let configPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.keys"
+        return "\(home)/.keys.csv"
     }()
 
     private var fileDescriptor: Int32 = -1
@@ -52,11 +52,11 @@ class ConfigManager {
         let content = """
         # Keys — https://keys.vlad.studio
         #
-        # [[remap]]
-        # caps_lock f20
+        # [remap]
+        # caps_lock,f20
         #
-        # [[snippet]]
-        # ":hi" "Hello world"
+        # [snippet]
+        # :hi,Hello world
         """
         FileManager.default.createFile(atPath: configPath, contents: content.data(using: .utf8))
     }

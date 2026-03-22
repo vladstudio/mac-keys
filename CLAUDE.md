@@ -19,13 +19,13 @@ open Keys.app      # run (needs Accessibility permission)
 - `SnippetEngine.swift` — text expansion: rolling buffer, trigger match, backspace+emit replacement
 - `EventEmitter.swift` — emits synthetic CGEvents tagged with a marker to avoid re-interception
 - `ConfigManager.swift` — loads/watches `~/.keys`, delegates updates/errors
-- `ConfigParser.swift` — custom config parser: `[[section]]` headers, `value value` lines, quoted strings, `"""`multiline
+- `ConfigParser.swift` — CSV config parser: `[section]` headers, comma-separated fields, RFC 4180 quoting
 - `Config.swift` — data models: KeyCombo, RemapRule, SnippetRule, Config
 - `KeyCodes.swift` — key name ↔ CGKeyCode mappings, combo/sequence parsing
 
 ## Key design decisions
 
-- No external dependencies — config parser is hand-written for our custom format
+- No external dependencies — config parser is hand-written CSV with RFC 4180 quoting
 - Events we emit are tagged via `.eventSourceUserData` field (magic value `0x4B455953`) so the tap callback skips them
 - Modifier double-tap detection: track tap timestamps, fire on second press within 400ms
 - Sequence rules take priority over single remap rules for the same key
@@ -34,4 +34,4 @@ open Keys.app      # run (needs Accessibility permission)
 
 ## Config format
 
-Custom format at `~/.keys`. Two section types: `[[remap]]` and `[[snippet]]`. One rule per line, two space-separated values. Quotes optional unless value has spaces. `"""` for multiline. See `example.keys`.
+CSV format at `~/.keys.csv`. Two section types: `[remap]` and `[snippet]`. One rule per line, two comma-separated fields. RFC 4180 quoting for fields containing commas or newlines. See `example.keys.csv`.

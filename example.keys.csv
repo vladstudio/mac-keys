@@ -7,16 +7,14 @@
 #   shift, control, option, command (and right_* variants)
 #
 # Modifiers in combos: option+shift+a
-# Sequences (quote if spaces): "option, option"
+# Sequences (quote if commas): "option, option"
 
-[[remap]]
-caps_lock f20
-option+shift+a control+b
-"option, option" f19
+[remap]
+caps_lock,f20
+option+shift+a,control+b
+"option, option",f19
 
-[[snippet]]
-":hi" "Hello world"
-":sig" """
-Best regards,
-Vlad
-"""
+[snippet]
+:hi,Hello world
+:sig,"Best regards,
+Steve"

@@ -6,7 +6,7 @@ A macOS menu bar app that remaps keys and expands text snippets.
 
 - **Key remapping** — single keys, modifier combos, double-tap sequences
 - **Text expansion** — type a trigger, get it replaced instantly
-- **Plain text config** — edit `~/.keys`, changes apply automatically
+- **Plain text config** — edit `~/.keys.csv`, changes apply automatically
 
 ## Requirements
 
@@ -28,20 +28,18 @@ On first launch, grant Accessibility access in System Settings.
 
 ## Configuration
 
-Edit `~/.keys`:
+Edit `~/.keys.csv`:
 
 ```
-[[remap]]
-caps_lock f20
-option+shift+a control+b
-"option, option" f19
+[remap]
+caps_lock,f20
+option+shift+a,control+b
+"option, option",f19
 
-[[snippet]]
-":hi" "Hello world"
-":sig" """
-Best regards,
-Vlad
-"""
+[snippet]
+:hi,Hello world
+:sig,"Best regards,
+Steve"
 ```
 
 ### Key names
