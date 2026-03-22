@@ -16,7 +16,7 @@ A macOS menu bar app that remaps keys and expands text snippets.
 ## Install
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicedream/keys/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vladstudio/mac-keys/main/install.sh)"
 ```
 
 - Downloads the latest release from GitHub
