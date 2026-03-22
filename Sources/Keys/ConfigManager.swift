@@ -18,16 +18,13 @@ class ConfigManager {
     private var pollTimer: DispatchSourceTimer?
 
     func load() {
-        guard FileManager.default.fileExists(atPath: configPath) else {
-            createDefault()
-            delegate?.configDidFail("Created default config at \(configPath)")
-            return
-        }
-
         do {
             let content = try String(contentsOfFile: configPath, encoding: .utf8)
             let config = try TOMLParser.parse(content)
             delegate?.configDidUpdate(config)
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+            createDefault()
+            delegate?.configDidFail("Created default config at \(configPath)")
         } catch {
             delegate?.configDidFail("\(error)")
         }

@@ -4,13 +4,15 @@ import Foundation
 class SnippetEngine {
     private var rules: [SnippetRule] = []
     private var buffer: String = ""
-    private var maxTriggerLen: Int = 0
     private var idleTimer: DispatchSourceTimer?
     private let idleTimeout: TimeInterval = 3.0
 
+    private var maxTriggerLen: Int {
+        rules.map(\.trigger.count).max() ?? 0
+    }
+
     func update(rules: [SnippetRule]) {
         self.rules = rules
-        maxTriggerLen = rules.map(\.trigger.count).max() ?? 0
         buffer = ""
     }
 
@@ -28,7 +30,7 @@ class SnippetEngine {
 
         for rule in rules {
             if buffer.hasSuffix(rule.trigger) {
-                let deleteCount = rule.trigger.count - 1 // current keystroke is suppressed
+                let deleteCount = rule.trigger.count - 1
                 EventEmitter.emitBackspaces(deleteCount)
                 EventEmitter.emitText(rule.replacement)
                 buffer = ""
@@ -37,8 +39,9 @@ class SnippetEngine {
         }
 
         // Keep buffer bounded
-        if buffer.count > maxTriggerLen {
-            buffer = String(buffer.suffix(maxTriggerLen))
+        let maxLen = maxTriggerLen
+        if buffer.count > maxLen {
+            buffer = String(buffer.suffix(maxLen))
         }
 
         return false
@@ -53,18 +56,20 @@ class SnippetEngine {
     // MARK: - Private
 
     private func resetIdleTimer() {
-        idleTimer?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + idleTimeout)
-        timer.setEventHandler { [weak self] in
-            self?.clearBuffer()
+        if let timer = idleTimer {
+            timer.schedule(deadline: .now() + idleTimeout)
+        } else {
+            let timer = DispatchSource.makeTimerSource(queue: .main)
+            timer.schedule(deadline: .now() + idleTimeout)
+            timer.setEventHandler { [weak self] in
+                self?.clearBuffer()
+            }
+            idleTimer = timer
+            timer.resume()
         }
-        idleTimer = timer
-        timer.resume()
     }
 
     private func character(from event: CGEvent) -> Character? {
-        // Skip command / control combos — they're shortcuts, not text input
         let flags = event.flags
         if flags.contains(.maskCommand) || flags.contains(.maskControl) {
             return nil

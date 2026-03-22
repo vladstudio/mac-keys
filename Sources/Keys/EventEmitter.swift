@@ -21,7 +21,7 @@ enum EventEmitter {
 
     static func emitBackspaces(_ count: Int) {
         for _ in 0..<count {
-            emitKeyPress(keyCode: 0x33) // delete key
+            emitKeyPress(keyCode: 0x33)
         }
     }
 

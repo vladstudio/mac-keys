@@ -2,15 +2,12 @@ import CoreGraphics
 import Foundation
 
 class RemapEngine {
+    private static let doubleTapWindow: TimeInterval = 0.4
+
     private var singleRules: [RemapRule] = []
     private var sequenceRules: [RemapRule] = []
-
-    // Active key-down remaps so we can match the corresponding key-up
     private var activeKeyRemaps: [UInt16: KeyCombo] = [:]
-    // Modifier whose release should be suppressed after a remapped press
     private var suppressingModifier: UInt16?
-
-    // Sequence (double-tap) detection state
     private var pendingModifierDown: (keyCode: UInt16, time: Date)?
     private var lastModifierTap: (keyCode: UInt16, time: Date)?
 
@@ -77,16 +74,8 @@ class RemapEngine {
     private func handleFlagsChanged(keyCode: UInt16, flags: CGEventFlags) -> Result {
         guard KeyCodes.modifierKeyCodes.contains(keyCode) else { return .passThrough }
 
-        let isPress: Bool
-        if keyCode == 0x39 { // caps_lock — toggle, treat every event as press
-            isPress = true
-        } else if let flag = KeyCodes.keyCodeToModifierFlag[keyCode] {
-            isPress = flags.contains(flag)
-        } else {
-            return .passThrough
-        }
+        let isPress = KeyCodes.isModifierPress(keyCode: keyCode, flags: flags)
 
-        // Suppress release after a remapped modifier press
         if !isPress {
             if suppressingModifier == keyCode {
                 suppressingModifier = nil
@@ -108,9 +97,8 @@ class RemapEngine {
             lastModifierTap = nil
         }
 
-        // Check double-tap sequence completion
         if let lastTap = lastModifierTap, lastTap.keyCode == keyCode,
-           Date().timeIntervalSince(lastTap.time) < 0.4
+           Date().timeIntervalSince(lastTap.time) < Self.doubleTapWindow
         {
             for rule in sequenceRules {
                 guard case .sequence(let combos) = rule.input else { continue }
@@ -144,15 +132,13 @@ class RemapEngine {
             guard combo.keyCode == keyCode else { continue }
 
             if keyCode == 0x39 {
-                // Caps lock: match keyCode only, ignore toggle flag state
                 if combo.modifiers.isEmpty {
                     suppressingModifier = keyCode
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }
             } else {
-                // Regular modifier: the pressed modifier's own flag is in `flags`,
-                // so add it to the expected set for comparison.
+                // The pressed modifier's own flag is in `flags`, so include it in expected set
                 let relevant = flags.intersection(KeyCombo.modifierMask)
                 var expected = combo.modifiers
                 if let flag = KeyCodes.keyCodeToModifierFlag[keyCode] {
