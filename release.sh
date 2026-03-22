@@ -2,7 +2,8 @@
 set -e
 cd "$(dirname "$0")"
 
-CURRENT=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+CURRENT=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)
+CURRENT=${CURRENT:-0.0}
 VERSION=${1:-${CURRENT%.*}.$((${CURRENT##*.} + 1))}
 echo "==> $CURRENT -> $VERSION"
 
