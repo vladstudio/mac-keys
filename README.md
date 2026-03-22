@@ -5,6 +5,7 @@
 A macOS menu bar app that remaps keys and pastes text snippets.
 
 - **Key remapping** — single keys, modifier combos, double-tap sequences
+- **Input source toggle** — cycle keyboard languages with a single key (e.g. caps lock)
 - **Snippet picker** — trigger a floating picker with a keystroke, filter and paste
 - **Plain text config** — edit `~/.keys.csv`, changes apply automatically
 
@@ -32,7 +33,7 @@ Edit `~/.keys.csv`:
 
 ```
 [remap]
-caps_lock,f20
+caps_lock,toggle_input
 option+shift+a,control+b
 "control, control",snippets
 
@@ -47,7 +48,11 @@ Steve"
 
 One rule per line: `input,output`. Combine modifiers with `+`: `option+shift+a`. Sequences use `, ` inside quotes: `"option, option"`.
 
-Map a key combo to `snippets` to open the snippet picker.
+Special outputs:
+- `snippets` — open the snippet picker
+- `toggle_input` — cycle through enabled keyboard input sources (e.g. English → Russian → English)
+
+Caps lock remaps to real keys (e.g. `caps_lock,f20`) use `hidutil` for HID-level remapping. All other remaps use CGEventTap. When using caps lock remaps, set Caps Lock to "No Action" in System Settings > Keyboard > Modifier Keys to avoid conflicts.
 
 ### Snippets
 

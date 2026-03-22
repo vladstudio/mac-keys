@@ -32,9 +32,11 @@ enum KeyCodes {
         "command": 0x37, "right_command": 0x36,
         // Virtual
         "snippets": snippetPickerKeyCode,
+        "toggle_input": toggleInputKeyCode,
     ]
 
     static let snippetPickerKeyCode: UInt16 = 0xFFFF
+    static let toggleInputKeyCode: UInt16 = 0xFFFE
 
     static let keyCodeToHIDUsage: [UInt16: UInt32] = [
         // Letters
@@ -88,7 +90,7 @@ enum KeyCodes {
     ]
 
     static func isModifierPress(keyCode: UInt16, flags: CGEventFlags) -> Bool {
-        if keyCode == 0x39 { return true } // caps_lock toggles; treat every event as press
+        if keyCode == 0x39 { return flags.contains(.maskAlphaShift) }
         guard let flag = keyCodeToModifierFlag[keyCode] else { return false }
         return flags.contains(flag)
     }

@@ -41,19 +41,36 @@ class KeyboardInterceptor {
         }
     }
 
+    var onWarning: ((String) -> Void)?
+
     func update(config: Config) {
         var hidMappings: [(src: UInt16, dst: UInt16)] = []
         var tapRules: [RemapRule] = []
+        var hasCapsLockRule = false
 
         for rule in config.remaps {
-            if case .single(let combo) = rule.input,
-               combo.keyCode == 0x39,
-               combo.modifiers.isEmpty,
+            let isCapsLock = {
+                if case .single(let combo) = rule.input {
+                    return combo.keyCode == 0x39 && combo.modifiers.isEmpty
+                }
+                return false
+            }()
+
+            if isCapsLock && hasCapsLockRule {
+                onWarning?("Multiple caps_lock rules; using first, ignoring rest")
+                continue
+            }
+            if isCapsLock { hasCapsLockRule = true }
+
+            if isCapsLock,
                rule.output.keyCode != KeyCodes.snippetPickerKeyCode,
+               rule.output.keyCode != KeyCodes.toggleInputKeyCode,
                rule.output.modifiers.isEmpty
             {
-                hidMappings.append((combo.keyCode, rule.output.keyCode))
+                // Caps lock + real key output → hidutil (HID-level, other apps see it)
+                hidMappings.append((0x39, rule.output.keyCode))
             } else {
+                // Virtual actions (snippets, toggle_input) and everything else → CGEventTap
                 tapRules.append(rule)
             }
         }
@@ -88,6 +105,9 @@ class KeyboardInterceptor {
             return nil
         case .showPicker:
             DispatchQueue.main.async { self.snippetPicker?.show(snippets: self.snippets) }
+            return nil
+        case .toggleInput:
+            DispatchQueue.main.async { InputSourceManager.toggle() }
             return nil
         case .passThrough:
             break

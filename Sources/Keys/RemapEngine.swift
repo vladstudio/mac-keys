@@ -15,6 +15,7 @@ class RemapEngine {
         case passThrough
         case consumed
         case showPicker
+        case toggleInput
     }
 
     func update(rules: [RemapRule]) {
@@ -48,6 +49,14 @@ class RemapEngine {
         }
     }
 
+    private static func virtualAction(_ keyCode: UInt16) -> Result? {
+        switch keyCode {
+        case KeyCodes.snippetPickerKeyCode: return .showPicker
+        case KeyCodes.toggleInputKeyCode: return .toggleInput
+        default: return nil
+        }
+    }
+
     // MARK: - Private
 
     private func handleKeyDown(keyCode: UInt16, flags: CGEventFlags) -> Result {
@@ -56,7 +65,7 @@ class RemapEngine {
             guard !KeyCodes.modifierKeyCodes.contains(combo.keyCode) else { continue }
             let relevant = flags.intersection(KeyCombo.modifierMask)
             if combo.keyCode == keyCode && combo.modifiers == relevant {
-                if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
+                if let action = Self.virtualAction(rule.output.keyCode) { return action }
                 activeKeyRemaps[keyCode] = rule.output
                 EventEmitter.emit(keyCode: rule.output.keyCode, flags: rule.output.modifiers, keyDown: true)
                 return .consumed
@@ -111,7 +120,7 @@ class RemapEngine {
                     lastModifierTap = nil
                     pendingModifierDown = nil
                     suppressingModifier = keyCode
-                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
+                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }
@@ -137,7 +146,7 @@ class RemapEngine {
             if keyCode == 0x39 {
                 if combo.modifiers.isEmpty {
                     suppressingModifier = keyCode
-                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
+                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }
@@ -149,7 +158,7 @@ class RemapEngine {
                 }
                 if relevant == expected {
                     suppressingModifier = keyCode
-                    if rule.output.keyCode == KeyCodes.snippetPickerKeyCode { return .showPicker }
+                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
                     EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
                     return .consumed
                 }

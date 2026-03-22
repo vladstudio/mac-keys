@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         interceptor.snippetPicker = snippetPicker
+        interceptor.onWarning = { [weak self] msg in self?.configDidFail(msg) }
         setupMenu()
         configManager.delegate = self
         configManager.load()
@@ -93,8 +94,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func quitApp() {
-        HIDManager.reset()
         NSApplication.shared.terminate(nil)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        HIDManager.reset()
     }
 
     // MARK: - Helpers
