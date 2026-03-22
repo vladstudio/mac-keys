@@ -12,7 +12,6 @@ A macOS menu bar app that remaps keys and pastes text snippets.
 ## Requirements
 
 - macOS 14 (Sonoma) or later
-- Xcode Command Line Tools
 
 ## Install
 
@@ -39,7 +38,7 @@ option+shift+a,control+b
 
 [snippet]
 Hello world
-my.email@example.com
+my.email@example.com,em
 "Best regards,
 Steve"
 ```
@@ -57,6 +56,8 @@ Caps lock remaps to real keys (e.g. `caps_lock,f20`) use `hidutil` for HID-level
 ### Snippets
 
 One snippet per line — the text that will be pasted. For multi-line snippets, wrap in double quotes (RFC 4180). Use `""` to escape a literal `"`.
+
+Add an optional keyword after a comma: `my.email@example.com,em`. Typing the keyword exactly in the picker puts that snippet at the top. If your snippet contains commas, quote it: `"Hello, World!"`.
 
 When the snippet picker opens, type to filter, use arrow keys to navigate, Enter to paste, Escape to close. Search is fuzzy — it prioritizes matches at word boundaries (e.g. `jd` finds `john@doe.com`) and prefers matches closer to the start of a snippet.
 

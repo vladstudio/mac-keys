@@ -3,8 +3,8 @@ import AppKit
 class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private let search = NSTextField()
     private let table = NSTableView()
-    private var all = [String]()
-    private var filtered = [String]()
+    private var all = [Snippet]()
+    private var filtered = [Snippet]()
     private var prevApp: NSRunningApplication?
 
     init() {
@@ -66,7 +66,7 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
 
     // MARK: - Show / Dismiss
 
-    func show(snippets: [String]) {
+    func show(snippets: [Snippet]) {
         all = snippets
         prevApp = NSWorkspace.shared.frontmostApplication
         search.stringValue = ""
@@ -82,8 +82,15 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
         if q.isEmpty {
             filtered = all
         } else {
-            let scored = all.compactMap { s -> (String, Int)? in
-                guard let score = fuzzyScore(query: q, target: s.lowercased()) else { return nil }
+            let scored = all.compactMap { s -> (Snippet, Int)? in
+                if let kw = s.keyword, kw.lowercased() == q { return (s, Int.max) }
+                guard let score = fuzzyScore(query: q, target: s.text.lowercased()) else {
+                    // Also try matching against keyword prefix
+                    if let kw = s.keyword, let score = fuzzyScore(query: q, target: kw.lowercased()) {
+                        return (s, score)
+                    }
+                    return nil
+                }
                 return (s, score)
             }
             filtered = scored.sorted { $0.1 > $1.1 }.map { $0.0 }
@@ -139,7 +146,7 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
 
     @objc private func pick() {
         guard table.selectedRow >= 0 else { return }
-        let text = filtered[table.selectedRow]
+        let text = filtered[table.selectedRow].text
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             EventEmitter.pasteText(text)
@@ -180,22 +187,45 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
         return s.contains("\n") ? first + "…" : String(first)
     }
 
+    private static let kwID = NSUserInterfaceItemIdentifier("keyword")
+
     func tableView(_ tv: NSTableView, viewFor col: NSTableColumn?, row: Int) -> NSView? {
+        let snippet = filtered[row]
+
         if let view = tv.makeView(withIdentifier: Self.cellID, owner: nil) as? NSTableCellView {
-            view.textField?.stringValue = displayText(filtered[row])
+            view.textField?.stringValue = displayText(snippet.text)
+            let kwLabel = view.subviews.first { $0.identifier == Self.kwID } as? NSTextField
+            kwLabel?.stringValue = snippet.keyword ?? ""
+            kwLabel?.isHidden = snippet.keyword == nil
             return view
         }
+
         let cell = NSTableCellView()
         cell.identifier = Self.cellID
-        let tf = NSTextField(labelWithString: displayText(filtered[row]))
+
+        let tf = NSTextField(labelWithString: displayText(snippet.text))
         tf.lineBreakMode = .byTruncatingTail
         tf.translatesAutoresizingMaskIntoConstraints = false
         cell.addSubview(tf)
         cell.textField = tf
+
+        let kw = NSTextField(labelWithString: snippet.keyword ?? "")
+        kw.identifier = Self.kwID
+        kw.textColor = .tertiaryLabelColor
+        kw.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        kw.alignment = .right
+        kw.isHidden = snippet.keyword == nil
+        kw.translatesAutoresizingMaskIntoConstraints = false
+        kw.setContentHuggingPriority(.required, for: .horizontal)
+        kw.setContentCompressionResistancePriority(.required, for: .horizontal)
+        cell.addSubview(kw)
+
         NSLayoutConstraint.activate([
             tf.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
-            tf.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
             tf.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            kw.leadingAnchor.constraint(greaterThanOrEqualTo: tf.trailingAnchor, constant: 8),
+            kw.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
+            kw.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
         return cell
     }

@@ -5,7 +5,7 @@ class KeyboardInterceptor {
     private let remapEngine = RemapEngine()
     var isEnabled = true
     var snippetPicker: SnippetPicker?
-    private(set) var snippets: [String] = []
+    private(set) var snippets: [Snippet] = []
 
     private var eventTap: CFMachPort?
 
