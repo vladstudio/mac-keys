@@ -62,11 +62,16 @@ enum ConfigParser {
                 i += linesConsumed
                 continue
             case "snippet":
-                let remaining = lines[i...].joined(separator: "\n")
-                let (text, afterField) = try readCSVField(remaining, from: remaining.startIndex, line: i + 1)
-                let linesConsumed = remaining[remaining.startIndex..<afterField].filter { $0 == "\n" }.count + 1
-                config.snippets.append(text)
-                i += linesConsumed
+                if trimmed.hasPrefix("\"") {
+                    let remaining = lines[i...].joined(separator: "\n")
+                    let (text, afterField) = try readCSVField(remaining, from: remaining.startIndex, line: i + 1)
+                    let linesConsumed = remaining[remaining.startIndex..<afterField].filter { $0 == "\n" }.count + 1
+                    config.snippets.append(text)
+                    i += linesConsumed
+                } else {
+                    config.snippets.append(trimmed)
+                    i += 1
+                }
                 continue
             default:
                 break

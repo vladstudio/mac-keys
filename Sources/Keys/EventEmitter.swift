@@ -27,8 +27,7 @@ enum EventEmitter {
         if savedClipboard == nil { savedClipboard = savePasteboard(pasteboard) }
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        emit(keyCode: 0x09, flags: .maskCommand, keyDown: true)
-        emit(keyCode: 0x09, flags: .maskCommand, keyDown: false)
+        emitKeyPress(keyCode: 0x09, flags: .maskCommand)
         let workItem = DispatchWorkItem {
             if let saved = savedClipboard {
                 restorePasteboard(pasteboard, from: saved)

@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 class KeyboardInterceptor {
-    let remapEngine = RemapEngine()
+    private let remapEngine = RemapEngine()
     var isEnabled = true
     var snippetPicker: SnippetPicker?
     private(set) var snippets: [String] = []

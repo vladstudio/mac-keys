@@ -50,16 +50,6 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
         scroll.translatesAutoresizingMaskIntoConstraints = false
         cv.addSubview(scroll)
 
-        let icon = NSImageView()
-        icon.image = loadAppIcon()
-        icon.contentTintColor = .tertiaryLabelColor
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(icon)
-
-        let hints = makeHints()
-        hints.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(hints)
-
         NSLayoutConstraint.activate([
             search.topAnchor.constraint(equalTo: cv.topAnchor, constant: 28),
             search.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 12),
@@ -70,90 +60,28 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
             scroll.topAnchor.constraint(equalTo: sep.bottomAnchor),
             scroll.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: icon.topAnchor, constant: -6),
-            icon.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 12),
-            icon.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -8),
-            icon.widthAnchor.constraint(equalToConstant: 16),
-            icon.heightAnchor.constraint(equalToConstant: 16),
-            hints.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -12),
-            hints.centerYAnchor.constraint(equalTo: icon.centerYAnchor),
+            scroll.bottomAnchor.constraint(equalTo: cv.bottomAnchor),
         ])
-    }
-
-    // MARK: - UI helpers
-
-    private func loadAppIcon() -> NSImage? {
-        let image = NSImage(size: NSSize(width: 16, height: 16))
-        if let url = Bundle.main.url(forResource: "MenuIcon@2x", withExtension: "png"),
-           let rep = NSImageRep(contentsOf: url) {
-            rep.size = NSSize(width: 16, height: 16)
-            image.addRepresentation(rep)
-            return image
-        }
-        return NSImage(systemSymbolName: "keyboard.fill", accessibilityDescription: "Keys")
-    }
-
-    private func makeHints() -> NSStackView {
-        let stack = NSStackView()
-        stack.orientation = .horizontal
-        stack.spacing = 5
-        stack.addArrangedSubview(keyBadge("↑↓"))
-        stack.addArrangedSubview(hintLabel("Navigate"))
-        stack.addArrangedSubview(spacer(12))
-        stack.addArrangedSubview(keyBadge("↵"))
-        stack.addArrangedSubview(hintLabel("Paste"))
-        stack.addArrangedSubview(spacer(12))
-        stack.addArrangedSubview(keyBadge("esc"))
-        stack.addArrangedSubview(hintLabel("Close"))
-        return stack
-    }
-
-    private func spacer(_ width: CGFloat) -> NSView {
-        let v = NSView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.widthAnchor.constraint(equalToConstant: width).isActive = true
-        return v
-    }
-
-    private func hintLabel(_ text: String) -> NSTextField {
-        let l = NSTextField(labelWithString: text)
-        l.font = .systemFont(ofSize: 11)
-        l.textColor = .tertiaryLabelColor
-        return l
-    }
-
-    private func keyBadge(_ text: String) -> NSView {
-        let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 11, weight: .medium)
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        let badge = NSView()
-        badge.wantsLayer = true
-        badge.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
-        badge.layer?.cornerRadius = 4
-        badge.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 6),
-            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -6),
-            label.topAnchor.constraint(equalTo: badge.topAnchor, constant: 1),
-            label.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -1),
-        ])
-        return badge
     }
 
     // MARK: - Show / Dismiss
 
     func show(snippets: [String]) {
         all = snippets
-        filtered = snippets
         prevApp = NSWorkspace.shared.frontmostApplication
         search.stringValue = ""
-        table.reloadData()
-        if !filtered.isEmpty { table.selectRowIndexes([0], byExtendingSelection: false) }
+        refilter()
         center()
         makeKeyAndOrderFront(nil)
         makeFirstResponder(search)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func refilter() {
+        let q = search.stringValue.lowercased()
+        filtered = q.isEmpty ? all : all.filter { $0.localizedCaseInsensitiveContains(q) }
+        table.reloadData()
+        if !filtered.isEmpty { table.selectRowIndexes([0], byExtendingSelection: false) }
     }
 
     private func dismiss() {
@@ -172,14 +100,7 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
 
     // MARK: - NSTextFieldDelegate
 
-    func controlTextDidChange(_ n: Notification) {
-        let q = search.stringValue.lowercased()
-        filtered = q.isEmpty ? all : all.filter {
-            $0.localizedCaseInsensitiveContains(q)
-        }
-        table.reloadData()
-        if !filtered.isEmpty { table.selectRowIndexes([0], byExtendingSelection: false) }
-    }
+    func controlTextDidChange(_ n: Notification) { refilter() }
 
     func control(_ control: NSControl, textView: NSTextView,
                  doCommandBy sel: Selector) -> Bool {
@@ -204,17 +125,30 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
 
     func numberOfRows(in tableView: NSTableView) -> Int { filtered.count }
 
+    private static let cellID = NSUserInterfaceItemIdentifier("snippet")
+
+    private func displayText(_ s: String) -> String {
+        let first = s.prefix(while: { $0 != "\n" })
+        return s.contains("\n") ? first + "…" : String(first)
+    }
+
     func tableView(_ tv: NSTableView, viewFor col: NSTableColumn?, row: Int) -> NSView? {
-        let cell = NSTextField(labelWithString: filtered[row])
-        cell.lineBreakMode = .byTruncatingTail
-        cell.translatesAutoresizingMaskIntoConstraints = false
-        let container = NSView()
-        container.addSubview(cell)
+        if let view = tv.makeView(withIdentifier: Self.cellID, owner: nil) as? NSTableCellView {
+            view.textField?.stringValue = displayText(filtered[row])
+            return view
+        }
+        let cell = NSTableCellView()
+        cell.identifier = Self.cellID
+        let tf = NSTextField(labelWithString: displayText(filtered[row]))
+        tf.lineBreakMode = .byTruncatingTail
+        tf.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(tf)
+        cell.textField = tf
         NSLayoutConstraint.activate([
-            cell.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
-            cell.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
-            cell.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            tf.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
+            tf.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
+            tf.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
-        return container
+        return cell
     }
 }
