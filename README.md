@@ -1,45 +1,44 @@
 # Keys
 
+<img src="keys app icon.png" width="128" alt="Keys icon">
+
 A macOS menu bar app that remaps keys and expands text snippets.
 
 - **Key remapping** — single keys, modifier combos, double-tap sequences
 - **Text expansion** — type a trigger, get it replaced instantly
-- **Plain text config** — edit `~/.keys.toml`, changes apply automatically
+- **Plain text config** — edit `~/.keys`, changes apply automatically
+
+## Requirements
+
+- macOS 14 (Sonoma) or later
+- Xcode Command Line Tools
 
 ## Install
 
-```
-git clone https://github.com/nicedream/keys.git
-cd keys
-./build.sh
-open Keys.app
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicedream/keys/main/install.sh)"
 ```
 
-macOS 14+ required. On first launch, grant Accessibility access in System Settings.
+- Downloads the latest release from GitHub
+- Installs to `/Applications` (replaces existing version)
+- Removes quarantine flag so the unsigned app can run
+- Opens the app
+
+On first launch, grant Accessibility access in System Settings.
 
 ## Configuration
 
-Edit `~/.keys.toml`:
+Edit `~/.keys`:
 
-```toml
-# Remap caps lock to F20
+```
 [[remap]]
-input = "caps_lock"
-output = "f20"
-
-# Double-tap option for Ctrl+Space
-[[remap]]
-input = "option, option"
-output = "control+space"
-
-# Text snippets
-[[snippet]]
-trigger = ":hi"
-replacement = "Hello world"
+caps_lock f20
+option+shift+a control+b
+"option, option" f19
 
 [[snippet]]
-trigger = ":sig"
-replacement = """
+":hi" "Hello world"
+":sig" """
 Best regards,
 Vlad
 """
@@ -49,14 +48,7 @@ Vlad
 
 `a`–`z`, `0`–`9`, `f1`–`f20`, `return`, `tab`, `space`, `delete`, `escape`, `caps_lock`, `forward_delete`, `up`, `down`, `left`, `right`, `minus`, `equal`, `left_bracket`, `right_bracket`, `backslash`, `semicolon`, `quote`, `grave`, `comma`, `period`, `slash`, `shift`, `control`, `option`, `command` (and `right_*` variants).
 
-Combine modifiers with `+`: `option+shift+a`. Sequences with `, `: `option, option`.
-
-## Menu bar
-
-- **Keys is ON / OFF** — toggle interception
-- **Reload Config** — manual reload (also auto-reloads on file change)
-- **Edit Config** — opens `~/.keys.toml` in your editor
-- **About Keys** — [keys.vlad.studio](https://keys.vlad.studio)
+Combine modifiers with `+`: `option+shift+a`. Sequences with `, `: `"option, option"`.
 
 ## License
 

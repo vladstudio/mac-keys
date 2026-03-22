@@ -103,12 +103,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func loadMenuIcon() -> NSImage? {
         let bundle = Bundle.main
-        if let url = bundle.url(forResource: "MenuIcon", withExtension: "png"),
-           let image = NSImage(contentsOf: url) {
-            image.size = NSSize(width: 18, height: 18)
-            return image
+        let image = NSImage(size: NSSize(width: 18, height: 18))
+
+        if let url1x = bundle.url(forResource: "MenuIcon", withExtension: "png"),
+           let rep1x = NSImageRep(contentsOf: url1x) {
+            rep1x.size = NSSize(width: 18, height: 18)
+            image.addRepresentation(rep1x)
         }
-        return nil
+        if let url2x = bundle.url(forResource: "MenuIcon@2x", withExtension: "png"),
+           let rep2x = NSImageRep(contentsOf: url2x) {
+            rep2x.size = NSSize(width: 18, height: 18)
+            image.addRepresentation(rep2x)
+        }
+
+        guard !image.representations.isEmpty else { return nil }
+        return image
     }
 
     private func promptAccessibility() {

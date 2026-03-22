@@ -10,7 +10,7 @@ class ConfigManager {
 
     let configPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.keys.toml"
+        return "\(home)/.keys"
     }()
 
     private var fileDescriptor: Int32 = -1
@@ -20,7 +20,7 @@ class ConfigManager {
     func load() {
         do {
             let content = try String(contentsOfFile: configPath, encoding: .utf8)
-            let config = try TOMLParser.parse(content)
+            let config = try ConfigParser.parse(content)
             delegate?.configDidUpdate(config)
         } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
             createDefault()
@@ -50,17 +50,13 @@ class ConfigManager {
 
     private func createDefault() {
         let content = """
-        # Keys configuration — https://keys.vlad.studio
+        # Keys — https://keys.vlad.studio
         #
-        # Remap keys:
         # [[remap]]
-        # input = "caps_lock"
-        # output = "f20"
+        # caps_lock f20
         #
-        # Text snippets:
         # [[snippet]]
-        # trigger = ":hi"
-        # replacement = "Hello world"
+        # ":hi" "Hello world"
         """
         FileManager.default.createFile(atPath: configPath, contents: content.data(using: .utf8))
     }

@@ -7,28 +7,16 @@
 #   shift, control, option, command (and right_* variants)
 #
 # Modifiers in combos: option+shift+a
-# Sequences: option, option  (within 400ms)
-
-# --- Remaps ---
+# Sequences (quote if spaces): "option, option"
 
 [[remap]]
-input = "caps_lock"
-output = "f20"
-
-# Double-tap option to trigger Ctrl+Space
-# [[remap]]
-# input = "option, option"
-# output = "control+space"
-
-# --- Snippets ---
+caps_lock f20
+option+shift+a control+b
+"option, option" f19
 
 [[snippet]]
-trigger = ":hi"
-replacement = "Hello world"
-
-[[snippet]]
-trigger = ":sig"
-replacement = """
+":hi" "Hello world"
+":sig" """
 Best regards,
 Vlad
 """
