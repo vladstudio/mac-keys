@@ -18,6 +18,7 @@ class RemapEngine {
         case toggleInput
         case openApp(String)
         case bash(String)
+        case paste(String)
     }
 
     func update(rules: [RemapRule]) {
@@ -60,6 +61,7 @@ class RemapEngine {
         case .toggleInput: return .toggleInput
         case .openApp(let name): return .openApp(name)
         case .bash(let cmd): return .bash(cmd)
+        case .paste(let text): return .paste(text)
         }
     }
 

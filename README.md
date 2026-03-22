@@ -52,6 +52,7 @@ Special outputs:
 - `toggle_input` — cycle through enabled keyboard input sources (e.g. English → Russian → English)
 - `open(AppName)` — launch an app (e.g. `f5,open(Safari)`)
 - `bash(command)` — run a shell command (e.g. `f6,bash(say hello)`). Quote the output if it contains commas: `f6,"bash(echo hello, world)"`
+- `paste(text)` — paste text directly (e.g. `f7,paste(Hello!)`). Quote the output if it contains commas: `f7,"paste(Hello, world)"`
 
 Caps lock remaps to real keys (e.g. `caps_lock,f20`) use `hidutil` for HID-level remapping. All other remaps use CGEventTap. When using caps lock remaps, set Caps Lock to "No Action" in System Settings > Keyboard > Modifier Keys to avoid conflicts.
 

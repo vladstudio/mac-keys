@@ -137,6 +137,10 @@ enum KeyCodes {
             let arg = String(trimmed.dropFirst(5).dropLast(1))
             return arg.isEmpty ? nil : .bash(arg)
         }
+        if lower.hasPrefix("paste(") && lower.hasSuffix(")") {
+            let arg = String(trimmed.dropFirst(6).dropLast(1))
+            return arg.isEmpty ? nil : .paste(arg)
+        }
         if let combo = parseCombo(string) { return .key(combo) }
         return nil
     }

@@ -124,6 +124,9 @@ class KeyboardInterceptor {
                 try? process.run()
             }
             return nil
+        case .paste(let text):
+            DispatchQueue.main.async { EventEmitter.pasteText(text) }
+            return nil
         case .passThrough:
             break
         }

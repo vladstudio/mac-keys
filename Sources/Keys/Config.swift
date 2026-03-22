@@ -15,6 +15,7 @@ enum RemapOutput {
     case toggleInput
     case openApp(String)
     case bash(String)
+    case paste(String)
 }
 
 struct RemapRule {

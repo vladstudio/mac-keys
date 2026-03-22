@@ -32,7 +32,7 @@ open Keys.app      # run (needs Accessibility permission)
 - Modifier double-tap detection: track tap timestamps, fire on second press within 400ms
 - Sequence rules take priority over single remap rules for the same key
 - Snippet picker pastes via clipboard (Cmd+V) — saves and restores original clipboard
-- Remap output is a `RemapOutput` enum: `.key(KeyCombo)`, `.showPicker`, `.toggleInput`, `.openApp(String)`, `.bash(String)`
+- Remap output is a `RemapOutput` enum: `.key(KeyCombo)`, `.showPicker`, `.toggleInput`, `.openApp(String)`, `.bash(String)`, `.paste(String)`
 - Caps lock remaps to real keys use `hidutil` (HID-level); all other actions use CGEventTap
 - `open(AppName)` launches apps via `/usr/bin/open -a`; `bash(command)` runs via `/bin/bash -c`
 - Config file watched via DispatchSource; falls back to 2-second polling if file is deleted
