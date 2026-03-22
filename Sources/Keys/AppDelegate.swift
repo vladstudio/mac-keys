@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -7,6 +8,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var accessibilityItem: NSMenuItem?
     private var accessibilitySeparator: NSMenuItem?
     private var accessibilityTimer: Timer?
+    private var loginItem: NSMenuItem!
     private let configManager = ConfigManager()
     private let interceptor = KeyboardInterceptor()
     private let snippetPicker = SnippetPicker()
@@ -59,6 +61,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        loginItem = NSMenuItem(
+            title: "Start on Login", action: #selector(toggleLoginItem), keyEquivalent: "")
+        loginItem.target = self
+        menu.addItem(loginItem)
+        setupLoginItem()
+
         let about = NSMenuItem(
             title: "About Keys", action: #selector(openAbout), keyEquivalent: "")
         about.target = self
@@ -93,6 +101,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func toggleLoginItem() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {}
+        loginItem.state = service.status == .enabled ? .on : .off
+    }
+
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
     }
@@ -102,6 +122,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Helpers
+
+    private func setupLoginItem() {
+        let service = SMAppService.mainApp
+        if !UserDefaults.standard.bool(forKey: "loginItemConfigured") {
+            UserDefaults.standard.set(true, forKey: "loginItemConfigured")
+            try? service.register()
+        }
+        loginItem.state = service.status == .enabled ? .on : .off
+    }
 
     private func updateIcon() {
         guard let button = statusItem.button else { return }
