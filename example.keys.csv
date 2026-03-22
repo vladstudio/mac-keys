@@ -8,11 +8,14 @@
 #
 # Modifiers in combos: option+shift+a
 # Sequences (quote if commas): "option, option"
+# Special outputs: snippets, toggle_input, open(AppName), bash(command)
 
 [remap]
 caps_lock,f20
 option+shift+a,control+b
 "control, control",snippets
+f5,open(Safari)
+f6,bash(say hello)
 
 [snippet]
 Hello world

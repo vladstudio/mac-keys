@@ -55,7 +55,7 @@ enum ConfigParser {
                 guard let input = KeyCodes.parseInput(first) else {
                     throw Error.unknownKey(i + 1, first)
                 }
-                guard let output = KeyCodes.parseCombo(second) else {
+                guard let output = KeyCodes.parseOutput(second) else {
                     throw Error.unknownKey(i + 1, second)
                 }
                 config.remaps.append(RemapRule(input: input, output: output))

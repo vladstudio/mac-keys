@@ -22,7 +22,7 @@ open Keys.app      # run (needs Accessibility permission)
 - `EventEmitter.swift` — emits synthetic CGEvents (tagged to avoid re-interception) and clipboard paste
 - `ConfigManager.swift` — loads/watches `~/.keys.csv`, delegates updates/errors
 - `ConfigParser.swift` — config parser: `[section]` headers, CSV for remaps, RFC 4180 quoting for multi-line snippets
-- `Config.swift` — data models: KeyCombo, RemapRule, Config
+- `Config.swift` — data models: KeyCombo, RemapOutput, RemapRule, Config
 - `KeyCodes.swift` — key name ↔ CGKeyCode mappings, CGKeyCode ↔ HID usage ID mappings, combo/sequence parsing
 
 ## Key design decisions
@@ -32,9 +32,9 @@ open Keys.app      # run (needs Accessibility permission)
 - Modifier double-tap detection: track tap timestamps, fire on second press within 400ms
 - Sequence rules take priority over single remap rules for the same key
 - Snippet picker pastes via clipboard (Cmd+V) — saves and restores original clipboard
-- Remap output `snippets` (keyCode 0xFFFF) is a virtual key that opens the snippet picker
-- Remap output `toggle_input` (keyCode 0xFFFE) is a virtual key that cycles keyboard input sources via TIS API
-- Caps lock remaps to real keys use `hidutil` (HID-level); virtual actions (snippets, toggle_input) use CGEventTap
+- Remap output is a `RemapOutput` enum: `.key(KeyCombo)`, `.showPicker`, `.toggleInput`, `.openApp(String)`, `.bash(String)`
+- Caps lock remaps to real keys use `hidutil` (HID-level); all other actions use CGEventTap
+- `open(AppName)` launches apps via `/usr/bin/open -a`; `bash(command)` runs via `/bin/bash -c`
 - Config file watched via DispatchSource; falls back to 2-second polling if file is deleted
 
 ## Config format

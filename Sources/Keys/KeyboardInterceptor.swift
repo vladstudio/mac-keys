@@ -63,14 +63,13 @@ class KeyboardInterceptor {
             if isCapsLock { hasCapsLockRule = true }
 
             if isCapsLock,
-               rule.output.keyCode != KeyCodes.snippetPickerKeyCode,
-               rule.output.keyCode != KeyCodes.toggleInputKeyCode,
-               rule.output.modifiers.isEmpty
+               case .key(let combo) = rule.output,
+               combo.modifiers.isEmpty
             {
                 // Caps lock + real key output → hidutil (HID-level, other apps see it)
-                hidMappings.append((0x39, rule.output.keyCode))
+                hidMappings.append((0x39, combo.keyCode))
             } else {
-                // Virtual actions (snippets, toggle_input) and everything else → CGEventTap
+                // Virtual actions and everything else → CGEventTap
                 tapRules.append(rule)
             }
         }
@@ -108,6 +107,22 @@ class KeyboardInterceptor {
             return nil
         case .toggleInput:
             DispatchQueue.main.async { InputSourceManager.toggle() }
+            return nil
+        case .openApp(let name):
+            DispatchQueue.main.async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                process.arguments = ["-a", name]
+                try? process.run()
+            }
+            return nil
+        case .bash(let cmd):
+            DispatchQueue.main.async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = ["-c", cmd]
+                try? process.run()
+            }
             return nil
         case .passThrough:
             break

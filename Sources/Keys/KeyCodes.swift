@@ -30,13 +30,7 @@ enum KeyCodes {
         "control": 0x3B, "right_control": 0x3E,
         "option": 0x3A, "right_option": 0x3D,
         "command": 0x37, "right_command": 0x36,
-        // Virtual
-        "snippets": snippetPickerKeyCode,
-        "toggle_input": toggleInputKeyCode,
     ]
-
-    static let snippetPickerKeyCode: UInt16 = 0xFFFF
-    static let toggleInputKeyCode: UInt16 = 0xFFFE
 
     static let keyCodeToHIDUsage: [UInt16: UInt32] = [
         // Letters
@@ -127,6 +121,24 @@ enum KeyCodes {
 
         guard let code = keyCode else { return nil }
         return KeyCombo(keyCode: code, modifiers: flags)
+    }
+
+    /// Parse remap output — special keywords, parameterized actions, or key combos.
+    static func parseOutput(_ string: String) -> RemapOutput? {
+        let trimmed = string.trimmingCharacters(in: .whitespaces)
+        let lower = trimmed.lowercased()
+        if lower == "snippets" { return .showPicker }
+        if lower == "toggle_input" { return .toggleInput }
+        if lower.hasPrefix("open(") && lower.hasSuffix(")") {
+            let arg = String(trimmed.dropFirst(5).dropLast(1))
+            return arg.isEmpty ? nil : .openApp(arg)
+        }
+        if lower.hasPrefix("bash(") && lower.hasSuffix(")") {
+            let arg = String(trimmed.dropFirst(5).dropLast(1))
+            return arg.isEmpty ? nil : .bash(arg)
+        }
+        if let combo = parseCombo(string) { return .key(combo) }
+        return nil
     }
 
     /// Parse input string — detects sequences ("option, option") vs single combos.

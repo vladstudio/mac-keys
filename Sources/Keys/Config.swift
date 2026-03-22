@@ -9,13 +9,21 @@ struct KeyCombo {
     ]
 }
 
+enum RemapOutput {
+    case key(KeyCombo)
+    case showPicker
+    case toggleInput
+    case openApp(String)
+    case bash(String)
+}
+
 struct RemapRule {
     enum Input {
         case single(KeyCombo)
         case sequence([KeyCombo])
     }
     let input: Input
-    let output: KeyCombo
+    let output: RemapOutput
 }
 
 struct Snippet {

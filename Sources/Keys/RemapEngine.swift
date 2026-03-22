@@ -16,6 +16,8 @@ class RemapEngine {
         case consumed
         case showPicker
         case toggleInput
+        case openApp(String)
+        case bash(String)
     }
 
     func update(rules: [RemapRule]) {
@@ -49,11 +51,15 @@ class RemapEngine {
         }
     }
 
-    private static func virtualAction(_ keyCode: UInt16) -> Result? {
-        switch keyCode {
-        case KeyCodes.snippetPickerKeyCode: return .showPicker
-        case KeyCodes.toggleInputKeyCode: return .toggleInput
-        default: return nil
+    private static func emitOrAction(_ output: RemapOutput) -> Result {
+        switch output {
+        case .key(let combo):
+            EventEmitter.emitKeyPress(keyCode: combo.keyCode, flags: combo.modifiers)
+            return .consumed
+        case .showPicker: return .showPicker
+        case .toggleInput: return .toggleInput
+        case .openApp(let name): return .openApp(name)
+        case .bash(let cmd): return .bash(cmd)
         }
     }
 
@@ -65,9 +71,11 @@ class RemapEngine {
             guard !KeyCodes.modifierKeyCodes.contains(combo.keyCode) else { continue }
             let relevant = flags.intersection(KeyCombo.modifierMask)
             if combo.keyCode == keyCode && combo.modifiers == relevant {
-                if let action = Self.virtualAction(rule.output.keyCode) { return action }
-                activeKeyRemaps[keyCode] = rule.output
-                EventEmitter.emit(keyCode: rule.output.keyCode, flags: rule.output.modifiers, keyDown: true)
+                guard case .key(let out) = rule.output else {
+                    return Self.emitOrAction(rule.output)
+                }
+                activeKeyRemaps[keyCode] = out
+                EventEmitter.emit(keyCode: out.keyCode, flags: out.modifiers, keyDown: true)
                 return .consumed
             }
         }
@@ -120,9 +128,7 @@ class RemapEngine {
                     lastModifierTap = nil
                     pendingModifierDown = nil
                     suppressingModifier = keyCode
-                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
-                    EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
-                    return .consumed
+                    return Self.emitOrAction(rule.output)
                 }
             }
         }
@@ -146,9 +152,7 @@ class RemapEngine {
             if keyCode == 0x39 {
                 if combo.modifiers.isEmpty {
                     suppressingModifier = keyCode
-                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
-                    EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
-                    return .consumed
+                    return Self.emitOrAction(rule.output)
                 }
             } else {
                 let relevant = flags.intersection(KeyCombo.modifierMask)
@@ -158,9 +162,7 @@ class RemapEngine {
                 }
                 if relevant == expected {
                     suppressingModifier = keyCode
-                    if let action = Self.virtualAction(rule.output.keyCode) { return action }
-                    EventEmitter.emitKeyPress(keyCode: rule.output.keyCode, flags: rule.output.modifiers)
-                    return .consumed
+                    return Self.emitOrAction(rule.output)
                 }
             }
         }
