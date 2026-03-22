@@ -42,8 +42,25 @@ class KeyboardInterceptor {
     }
 
     func update(config: Config) {
-        remapEngine.update(rules: config.remaps)
+        var hidMappings: [(src: UInt16, dst: UInt16)] = []
+        var tapRules: [RemapRule] = []
+
+        for rule in config.remaps {
+            if case .single(let combo) = rule.input,
+               combo.keyCode == 0x39,
+               combo.modifiers.isEmpty,
+               rule.output.keyCode != KeyCodes.snippetPickerKeyCode,
+               rule.output.modifiers.isEmpty
+            {
+                hidMappings.append((combo.keyCode, rule.output.keyCode))
+            } else {
+                tapRules.append(rule)
+            }
+        }
+
+        remapEngine.update(rules: tapRules)
         snippets = config.snippets
+        HIDManager.apply(mappings: hidMappings)
     }
 
     // MARK: - Event handling

@@ -93,6 +93,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func quitApp() {
+        HIDManager.reset()
         NSApplication.shared.terminate(nil)
     }
 
