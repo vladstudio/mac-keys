@@ -10,6 +10,8 @@ class KeyboardInterceptor {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var disableCount = 0
+    private var firstDisableTime: Date?
     var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
@@ -41,9 +43,7 @@ class KeyboardInterceptor {
     }
 
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
+        tearDown()
     }
 
     /// Fully tear down the event tap so it no longer sits in the run loop.
@@ -105,13 +105,23 @@ class KeyboardInterceptor {
         let pass = Unmanaged.passUnretained(event)
 
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if AXIsProcessTrusted() {
-                if let tap = eventTap {
-                    CGEvent.tapEnable(tap: tap, enable: true)
-                }
+            // AXIsProcessTrusted() can return stale cached values, so also
+            // detect permission loss by rapid consecutive disables (3+ in 2s).
+            let now = Date()
+            if let first = firstDisableTime, now.timeIntervalSince(first) < 2 {
+                disableCount += 1
             } else {
+                firstDisableTime = now
+                disableCount = 1
+            }
+
+            if !AXIsProcessTrusted() || disableCount >= 3 {
+                disableCount = 0
+                firstDisableTime = nil
                 tearDown()
                 DispatchQueue.main.async { self.onPermissionLost?() }
+            } else if let tap = eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
             }
             return pass
         }
