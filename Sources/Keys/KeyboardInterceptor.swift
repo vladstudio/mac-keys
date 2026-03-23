@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -14,6 +15,7 @@ class KeyboardInterceptor {
             (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
             | (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << 14) // NX_SYSDEFINED (media keys)
 
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
 
@@ -93,13 +95,29 @@ class KeyboardInterceptor {
             return pass
         }
 
+        // Media keys (NX_SYSDEFINED)
+        if type.rawValue == 14 {
+            guard isEnabled,
+                  let nsEvent = NSEvent(cgEvent: event),
+                  nsEvent.subtype.rawValue == 8 // NX_SUBTYPE_AUX_CONTROL_BUTTONS
+            else { return pass }
+            let data1 = nsEvent.data1
+            let keyType = Int32((data1 >> 16) & 0xFFFF)
+            let isDown = ((data1 >> 8) & 0xFF) == 0x0A
+            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown), pass: pass)
+        }
+
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
             return pass
         }
 
         guard isEnabled else { return pass }
 
-        switch remapEngine.handleEvent(event: event, type: type) {
+        return dispatch(remapEngine.handleEvent(event: event, type: type), pass: pass)
+    }
+
+    private func dispatch(_ result: RemapEngine.Result, pass: Unmanaged<CGEvent>) -> Unmanaged<CGEvent>? {
+        switch result {
         case .consumed:
             return nil
         case .showPicker:
@@ -128,10 +146,8 @@ class KeyboardInterceptor {
             DispatchQueue.main.async { EventEmitter.pasteText(text) }
             return nil
         case .passThrough:
-            break
+            return pass
         }
-
-        return pass
     }
 }
 

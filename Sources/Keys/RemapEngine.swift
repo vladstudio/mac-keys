@@ -6,6 +6,7 @@ class RemapEngine {
 
     private var singleRules: [RemapRule] = []
     private var sequenceRules: [RemapRule] = []
+    private var mediaKeyRules: [Int32: RemapOutput] = [:]
     private var activeKeyRemaps: [UInt16: KeyCombo] = [:]
     private var suppressingModifier: UInt16?
     private var pendingModifierDown: (keyCode: UInt16, time: Date)?
@@ -24,6 +25,12 @@ class RemapEngine {
     func update(rules: [RemapRule]) {
         singleRules = rules.filter { if case .single = $0.input { return true }; return false }
         sequenceRules = rules.filter { if case .sequence = $0.input { return true }; return false }
+        mediaKeyRules = [:]
+        for rule in rules {
+            if case .mediaKey(let keyType) = rule.input {
+                mediaKeyRules[keyType] = rule.output
+            }
+        }
         reset()
     }
 
@@ -32,6 +39,12 @@ class RemapEngine {
         suppressingModifier = nil
         pendingModifierDown = nil
         lastModifierTap = nil
+    }
+
+    func handleMediaKey(keyType: Int32, isDown: Bool) -> Result {
+        guard let output = mediaKeyRules[keyType] else { return .passThrough }
+        guard isDown else { return .consumed }
+        return Self.emitOrAction(output)
     }
 
     func handleEvent(event: CGEvent, type: CGEventType) -> Result {
@@ -62,6 +75,7 @@ class RemapEngine {
         case .openApp(let name): return .openApp(name)
         case .bash(let cmd): return .bash(cmd)
         case .paste(let text): return .paste(text)
+        case .ignore: return .consumed
         }
     }
 

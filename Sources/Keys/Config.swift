@@ -16,12 +16,14 @@ enum RemapOutput {
     case openApp(String)
     case bash(String)
     case paste(String)
+    case ignore
 }
 
 struct RemapRule {
     enum Input {
         case single(KeyCombo)
         case sequence([KeyCombo])
+        case mediaKey(Int32)
     }
     let input: Input
     let output: RemapOutput

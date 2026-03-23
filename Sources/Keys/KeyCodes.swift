@@ -60,6 +60,20 @@ enum KeyCodes {
         0x3A: 0xE2, 0x3D: 0xE6, 0x37: 0xE3, 0x36: 0xE7,
     ]
 
+    // NX_KEYTYPE values for media keys (NX_SYSDEFINED events)
+    static let mediaKeyTypes: [String: Int32] = [
+        "brightness_down": 3,
+        "brightness_up": 2,
+        "illumination_down": 22,
+        "illumination_up": 21,
+        "mute": 7,
+        "next": 17,
+        "play": 16,
+        "previous": 18,
+        "volume_down": 1,
+        "volume_up": 0,
+    ]
+
     static let modifierKeyCodes: Set<UInt16> = [
         0x38, 0x3C, // shift
         0x3B, 0x3E, // control
@@ -129,6 +143,7 @@ enum KeyCodes {
         let lower = trimmed.lowercased()
         if lower == "snippets" { return .showPicker }
         if lower == "toggle_input" { return .toggleInput }
+        if lower == "ignore" { return .ignore }
         if lower.hasPrefix("open(") && lower.hasSuffix(")") {
             let arg = String(trimmed.dropFirst(5).dropLast(1))
             return arg.isEmpty ? nil : .openApp(arg)
@@ -145,8 +160,12 @@ enum KeyCodes {
         return nil
     }
 
-    /// Parse input string — detects sequences ("option, option") vs single combos.
+    /// Parse input string — detects media keys, sequences ("option, option"), or single combos.
     static func parseInput(_ string: String) -> RemapRule.Input? {
+        let lower = string.trimmingCharacters(in: .whitespaces).lowercased()
+        if let keyType = mediaKeyTypes[lower] {
+            return .mediaKey(keyType)
+        }
         if string.contains(", ") {
             let steps = string.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             let combos = steps.compactMap { parseCombo($0) }

@@ -53,6 +53,7 @@ Special outputs:
 - `open(AppName)` — launch an app (e.g. `f5,open(Safari)`)
 - `bash(command)` — run a shell command (e.g. `f6,bash(say hello)`). Quote the output if it contains commas: `f6,"bash(echo hello, world)"`
 - `paste(text)` — paste text directly (e.g. `f7,paste(Hello!)`). Quote the output if it contains commas: `f7,"paste(Hello, world)"`
+- `ignore` — disable the key completely (e.g. `caps_lock,ignore`)
 
 Caps lock remaps to real keys (e.g. `caps_lock,f20`) use `hidutil` for HID-level remapping. All other remaps use CGEventTap. When using caps lock remaps, set Caps Lock to "No Action" in System Settings > Keyboard > Modifier Keys to avoid conflicts.
 
@@ -67,6 +68,8 @@ When the snippet picker opens, type to filter, use arrow keys to navigate, Enter
 ### Key names
 
 `a`–`z`, `0`–`9`, `f1`–`f20`, `return`, `tab`, `space`, `delete`, `escape`, `caps_lock`, `forward_delete`, `up`, `down`, `left`, `right`, `minus`, `equal`, `left_bracket`, `right_bracket`, `backslash`, `semicolon`, `quote`, `grave`, `comma`, `period`, `slash`, `shift`, `control`, `option`, `command` (and `right_*` variants).
+
+**Media keys** (input only): `brightness_up`, `brightness_down`, `volume_up`, `volume_down`, `mute`, `play`, `next`, `previous`, `illumination_up`, `illumination_down`.
 
 ## License
 
