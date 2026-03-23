@@ -14,7 +14,7 @@ open Keys.app      # run (needs Accessibility permission)
 
 - `main.swift` — NSApplication entry point (.accessory policy, no dock icon)
 - `AppDelegate.swift` — menu bar UI, wires config manager to keyboard interceptor
-- `KeyboardInterceptor.swift` — CGEventTap callback, routes events through remap engine; partitions caps_lock rules between hidutil and CGEventTap
+- `KeyboardInterceptor.swift` — CGEventTap callback, routes events through remap engine; partitions caps_lock rules between hidutil and CGEventTap; detects built-in keyboards via IOKit for per-keyboard rule filtering
 - `RemapEngine.swift` — key remapping: single keys, modifier combos, modifier double-tap sequences
 - `HIDManager.swift` — runs `hidutil` for HID-level key remapping (caps lock); cleans up on quit
 - `InputSourceManager.swift` — cycles enabled keyboard input sources via Carbon TIS API
@@ -22,7 +22,7 @@ open Keys.app      # run (needs Accessibility permission)
 - `EventEmitter.swift` — emits synthetic CGEvents (tagged to avoid re-interception) and clipboard paste
 - `ConfigManager.swift` — loads/watches `~/.keys.csv`, delegates updates/errors
 - `ConfigParser.swift` — config parser: `[section]` headers, CSV for remaps, RFC 4180 quoting for multi-line snippets
-- `Config.swift` — data models: KeyCombo, RemapOutput, RemapRule, Config
+- `Config.swift` — data models: KeyCombo, RemapOutput, RemapRule, Config, KeyboardTarget
 - `KeyCodes.swift` — key name ↔ CGKeyCode mappings, CGKeyCode ↔ HID usage ID mappings, combo/sequence parsing
 
 ## Key design decisions
@@ -33,10 +33,11 @@ open Keys.app      # run (needs Accessibility permission)
 - Sequence rules take priority over single remap rules for the same key
 - Snippet picker pastes via clipboard (Cmd+V) — saves and restores original clipboard
 - Remap output is a `RemapOutput` enum: `.key(KeyCombo)`, `.showPicker`, `.toggleInput`, `.openApp(String)`, `.bash(String)`, `.paste(String)`
-- Caps lock remaps to real keys use `hidutil` (HID-level); all other actions use CGEventTap
+- Caps lock remaps to real keys use `hidutil` (HID-level); all other actions use CGEventTap. Per-keyboard caps_lock rules always use CGEventTap (hidutil is system-wide)
 - `open(AppName)` launches apps via `/usr/bin/open -a`; `bash(command)` runs via `/bin/bash -c`
 - Config file watched via DispatchSource; falls back to 2-second polling if file is deleted
+- Per-keyboard remaps: `[remap:internal]` / `[remap:external]` sections. Internal keyboard detected via IOKit `Built-In` property; keyboard type matched against CGEvent's `keyboardEventKeyboardType` field. Re-detected on each config reload
 
 ## Config format
 
-`~/.keys.csv`. Two section types: `[remap]` and `[snippet]`. Remap rules are two comma-separated fields. Snippet lines are plain text (one per line), or RFC 4180 quoted for multi-line. See `example.keys.csv`.
+`~/.keys.csv`. Two section types: `[remap]` and `[snippet]`. Remap sections support keyboard targeting: `[remap]` (all), `[remap:internal]` (built-in), `[remap:external]` (USB/Bluetooth). Remap rules are two comma-separated fields. Snippet lines are plain text (one per line), or RFC 4180 quoted for multi-line. See `example.keys.csv`.

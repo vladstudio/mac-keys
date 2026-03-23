@@ -22,6 +22,7 @@ enum ConfigParser {
     static func parse(_ content: String) throws -> Config {
         var config = Config()
         var section: String?
+        var currentKeyboard: KeyboardTarget = .all
         let lines = content.components(separatedBy: "\n")
         var i = 0
 
@@ -35,12 +36,21 @@ enum ConfigParser {
 
             // [section]
             if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") && !trimmed.hasPrefix("[[") {
-                let name = String(trimmed.dropFirst(1).dropLast(1))
+                let raw = String(trimmed.dropFirst(1).dropLast(1))
                     .trimmingCharacters(in: .whitespaces)
-                guard name == "remap" || name == "snippet" else {
-                    throw Error.unknownSection(i + 1, name)
+                let name = raw.lowercased()
+                switch name {
+                case "remap":
+                    section = "remap"; currentKeyboard = .all
+                case "remap:internal":
+                    section = "remap"; currentKeyboard = .internal
+                case "remap:external":
+                    section = "remap"; currentKeyboard = .external
+                case "snippet":
+                    section = "snippet"
+                default:
+                    throw Error.unknownSection(i + 1, raw)
                 }
-                section = name
                 i += 1
                 continue
             }
@@ -58,7 +68,7 @@ enum ConfigParser {
                 guard let output = KeyCodes.parseOutput(second) else {
                     throw Error.unknownKey(i + 1, second)
                 }
-                config.remaps.append(RemapRule(input: input, output: output))
+                config.remaps.append(RemapRule(input: input, output: output, keyboard: currentKeyboard))
                 i += linesConsumed
                 continue
             case "snippet":

@@ -17,6 +17,13 @@ option+shift+a,control+b
 f5,open(Safari)
 f6,bash(say hello)
 
+# Per-keyboard remaps (internal = built-in MacBook keyboard)
+[remap:internal]
+caps_lock,toggle_input
+
+[remap:external]
+caps_lock,escape
+
 [snippet]
 Hello world
 my.email@example.com

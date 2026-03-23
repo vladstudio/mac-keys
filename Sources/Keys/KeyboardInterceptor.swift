@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import IOKit.hid
 
 class KeyboardInterceptor {
     private let remapEngine = RemapEngine()
@@ -12,6 +13,7 @@ class KeyboardInterceptor {
     private var runLoopSource: CFRunLoopSource?
     private var disableCount = 0
     private var firstDisableTime: Date?
+    private var internalKeyboardTypes = Set<Int64>()
     var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
@@ -62,9 +64,11 @@ class KeyboardInterceptor {
     var onWarning: ((String) -> Void)?
 
     func update(config: Config) {
+        internalKeyboardTypes = Self.detectInternalKeyboardTypes()
+
         var hidMappings: [(src: UInt16, dst: UInt16)] = []
         var tapRules: [RemapRule] = []
-        var hasCapsLockRule = false
+        var capsLockKeyboards = Set<KeyboardTarget>()
 
         for rule in config.remaps {
             let isCapsLock = {
@@ -74,20 +78,21 @@ class KeyboardInterceptor {
                 return false
             }()
 
-            if isCapsLock && hasCapsLockRule {
-                onWarning?("Multiple caps_lock rules; using first, ignoring rest")
+            if isCapsLock && capsLockKeyboards.contains(rule.keyboard) {
+                onWarning?("Multiple caps_lock rules for same keyboard; using first, ignoring rest")
                 continue
             }
-            if isCapsLock { hasCapsLockRule = true }
+            if isCapsLock { capsLockKeyboards.insert(rule.keyboard) }
 
+            // Caps lock → real key can use hidutil, but only for "all keyboards"
+            // (hidutil is system-wide; per-keyboard rules must go through CGEventTap)
             if isCapsLock,
                case .key(let combo) = rule.output,
-               combo.modifiers.isEmpty
+               combo.modifiers.isEmpty,
+               rule.keyboard == .all
             {
-                // Caps lock + real key output → hidutil (HID-level, other apps see it)
                 hidMappings.append((0x39, combo.keyCode))
             } else {
-                // Virtual actions and everything else → CGEventTap
                 tapRules.append(rule)
             }
         }
@@ -126,6 +131,9 @@ class KeyboardInterceptor {
             return pass
         }
 
+        let kbType = event.getIntegerValueField(.keyboardEventKeyboardType)
+        let isInternal = !internalKeyboardTypes.isEmpty && internalKeyboardTypes.contains(kbType)
+
         // Media keys (NX_SYSDEFINED)
         if type.rawValue == 14 {
             guard isEnabled,
@@ -135,7 +143,7 @@ class KeyboardInterceptor {
             let data1 = nsEvent.data1
             let keyType = Int32((data1 >> 16) & 0xFFFF)
             let isDown = ((data1 >> 8) & 0xFF) == 0x0A
-            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown), pass: pass)
+            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown, isInternal: isInternal), pass: pass)
         }
 
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
@@ -144,7 +152,29 @@ class KeyboardInterceptor {
 
         guard isEnabled else { return pass }
 
-        return dispatch(remapEngine.handleEvent(event: event, type: type), pass: pass)
+        return dispatch(remapEngine.handleEvent(event: event, type: type, isInternal: isInternal), pass: pass)
+    }
+
+    /// Query IOKit for keyboard types belonging to built-in keyboards.
+    private static func detectInternalKeyboardTypes() -> Set<Int64> {
+        var result = Set<Int64>()
+        let manager = IOHIDManagerCreate(kCFAllocatorDefault, 0)
+        defer { _ = IOHIDManagerClose(manager, 0) }
+
+        IOHIDManagerSetDeviceMatching(manager, [
+            "DeviceUsagePage": 1, // Generic Desktop
+            "DeviceUsage": 6,    // Keyboard
+        ] as CFDictionary)
+        _ = IOHIDManagerOpen(manager, 0)
+
+        guard let devices = IOHIDManagerCopyDevices(manager) else { return result }
+        for case let device as IOHIDDevice in (devices as NSSet) {
+            let builtIn = IOHIDDeviceGetProperty(device, "Built-In" as CFString)
+            guard (builtIn as? NSNumber)?.boolValue == true else { continue }
+            guard let type = IOHIDDeviceGetProperty(device, "KeyboardType" as CFString) as? NSNumber else { continue }
+            result.insert(type.int64Value)
+        }
+        return result
     }
 
     private func dispatch(_ result: RemapEngine.Result, pass: Unmanaged<CGEvent>) -> Unmanaged<CGEvent>? {

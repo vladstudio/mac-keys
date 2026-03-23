@@ -47,6 +47,19 @@ Steve"
 
 One rule per line: `input,output`. Combine modifiers with `+`: `option+shift+a`. Sequences use `, ` inside quotes: `"option, option"`.
 
+**Per-keyboard remaps**: Use `[remap:internal]` for the built-in MacBook keyboard or `[remap:external]` for USB/Bluetooth keyboards. Plain `[remap]` applies to all keyboards. You can use multiple remap sections:
+
+```
+[remap]
+"control, control",snippets
+
+[remap:internal]
+caps_lock,toggle_input
+
+[remap:external]
+caps_lock,escape
+```
+
 Special outputs:
 - `snippets` — open the snippet picker
 - `toggle_input` — cycle through enabled keyboard input sources (e.g. English → Russian → English)

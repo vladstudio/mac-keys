@@ -6,7 +6,7 @@ class RemapEngine {
 
     private var singleRules: [RemapRule] = []
     private var sequenceRules: [RemapRule] = []
-    private var mediaKeyRules: [Int32: RemapOutput] = [:]
+    private var mediaKeyRules: [Int32: [(output: RemapOutput, keyboard: KeyboardTarget)]] = [:]
     private var activeKeyRemaps: [UInt16: KeyCombo] = [:]
     private var suppressingModifier: UInt16?
     private var pendingModifierDown: (keyCode: UInt16, time: Date)?
@@ -28,7 +28,7 @@ class RemapEngine {
         mediaKeyRules = [:]
         for rule in rules {
             if case .mediaKey(let keyType) = rule.input {
-                mediaKeyRules[keyType] = rule.output
+                mediaKeyRules[keyType, default: []].append((rule.output, rule.keyboard))
             }
         }
         reset()
@@ -41,13 +41,15 @@ class RemapEngine {
         lastModifierTap = nil
     }
 
-    func handleMediaKey(keyType: Int32, isDown: Bool) -> Result {
-        guard let output = mediaKeyRules[keyType] else { return .passThrough }
+    func handleMediaKey(keyType: Int32, isDown: Bool, isInternal: Bool) -> Result {
+        guard let entries = mediaKeyRules[keyType],
+              let match = entries.first(where: { $0.keyboard.matches(isInternal: isInternal) })
+        else { return .passThrough }
         guard isDown else { return .consumed }
-        return Self.emitOrAction(output)
+        return Self.emitOrAction(match.output)
     }
 
-    func handleEvent(event: CGEvent, type: CGEventType) -> Result {
+    func handleEvent(event: CGEvent, type: CGEventType, isInternal: Bool) -> Result {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         let flags = event.flags
 
@@ -55,11 +57,11 @@ class RemapEngine {
         case .keyDown:
             pendingModifierDown = nil
             lastModifierTap = nil
-            return handleKeyDown(keyCode: keyCode, flags: flags)
+            return handleKeyDown(keyCode: keyCode, flags: flags, isInternal: isInternal)
         case .keyUp:
             return handleKeyUp(keyCode: keyCode)
         case .flagsChanged:
-            return handleFlagsChanged(keyCode: keyCode, flags: flags)
+            return handleFlagsChanged(keyCode: keyCode, flags: flags, isInternal: isInternal)
         default:
             return .passThrough
         }
@@ -81,8 +83,9 @@ class RemapEngine {
 
     // MARK: - Private
 
-    private func handleKeyDown(keyCode: UInt16, flags: CGEventFlags) -> Result {
+    private func handleKeyDown(keyCode: UInt16, flags: CGEventFlags, isInternal: Bool) -> Result {
         for rule in singleRules {
+            guard rule.keyboard.matches(isInternal: isInternal) else { continue }
             guard case .single(let combo) = rule.input else { continue }
             guard !KeyCodes.modifierKeyCodes.contains(combo.keyCode) else { continue }
             let relevant = flags.intersection(KeyCombo.modifierMask)
@@ -106,7 +109,7 @@ class RemapEngine {
         return .passThrough
     }
 
-    private func handleFlagsChanged(keyCode: UInt16, flags: CGEventFlags) -> Result {
+    private func handleFlagsChanged(keyCode: UInt16, flags: CGEventFlags, isInternal: Bool) -> Result {
         guard KeyCodes.modifierKeyCodes.contains(keyCode) else { return .passThrough }
 
         let isPress = KeyCodes.isModifierPress(keyCode: keyCode, flags: flags)
@@ -136,6 +139,7 @@ class RemapEngine {
            Date().timeIntervalSince(lastTap.time) < Self.doubleTapWindow
         {
             for rule in sequenceRules {
+                guard rule.keyboard.matches(isInternal: isInternal) else { continue }
                 guard case .sequence(let combos) = rule.input else { continue }
                 if combos.count == 2
                     && combos[0].keyCode == keyCode
@@ -151,6 +155,7 @@ class RemapEngine {
 
         // If this key starts a sequence, record it and let through (don't check single rules)
         let startsSequence = sequenceRules.contains { rule in
+            guard rule.keyboard.matches(isInternal: isInternal) else { return false }
             guard case .sequence(let combos) = rule.input else { return false }
             return combos.first?.keyCode == keyCode
         }
@@ -161,6 +166,7 @@ class RemapEngine {
 
         // Check single modifier remap rules
         for rule in singleRules {
+            guard rule.keyboard.matches(isInternal: isInternal) else { continue }
             guard case .single(let combo) = rule.input else { continue }
             guard KeyCodes.modifierKeyCodes.contains(combo.keyCode) else { continue }
             guard combo.keyCode == keyCode else { continue }
