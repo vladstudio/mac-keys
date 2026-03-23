@@ -16,6 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         interceptor.snippetPicker = snippetPicker
         interceptor.onWarning = { [weak self] msg in self?.configDidFail(msg) }
+        interceptor.onPermissionLost = { [weak self] in self?.promptAccessibility() }
         setupMenu()
         configManager.delegate = self
         configManager.load()

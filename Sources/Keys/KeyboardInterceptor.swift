@@ -9,6 +9,8 @@ class KeyboardInterceptor {
     private(set) var snippets: [Snippet] = []
 
     private var eventTap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+    var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
         let eventMask: CGEventMask =
@@ -32,6 +34,7 @@ class KeyboardInterceptor {
 
         eventTap = tap
         let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        runLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         return true
@@ -41,6 +44,19 @@ class KeyboardInterceptor {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
+    }
+
+    /// Fully tear down the event tap so it no longer sits in the run loop.
+    /// A broken active tap that can't process events will block all input.
+    private func tearDown() {
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            runLoopSource = nil
+        }
+        eventTap = nil
     }
 
     var onWarning: ((String) -> Void)?
@@ -89,8 +105,13 @@ class KeyboardInterceptor {
         let pass = Unmanaged.passUnretained(event)
 
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let tap = eventTap {
-                CGEvent.tapEnable(tap: tap, enable: true)
+            if AXIsProcessTrusted() {
+                if let tap = eventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+            } else {
+                tearDown()
+                DispatchQueue.main.async { self.onPermissionLost?() }
             }
             return pass
         }
