@@ -82,16 +82,18 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
         if q.isEmpty {
             filtered = all
         } else {
+            let kwBonus = 10_000
             let scored = all.compactMap { s -> (Snippet, Int)? in
                 if let kw = s.keyword, kw.lowercased() == q { return (s, Int.max) }
-                guard let score = fuzzyScore(query: q, target: s.text.lowercased()) else {
-                    // Also try matching against keyword prefix
-                    if let kw = s.keyword, let score = fuzzyScore(query: q, target: kw.lowercased()) {
-                        return (s, score)
-                    }
-                    return nil
+                let textScore = fuzzyScore(query: q, target: s.text.lowercased())
+                let kwScore = s.keyword.flatMap { fuzzyScore(query: q, target: $0.lowercased()) }
+                if let ks = kwScore {
+                    return (s, max(ks, textScore ?? 0) + kwBonus)
                 }
-                return (s, score)
+                if let ts = textScore {
+                    return (s, ts)
+                }
+                return nil
             }
             filtered = scored.sorted { $0.1 > $1.1 }.map { $0.0 }
         }
