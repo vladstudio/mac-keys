@@ -19,6 +19,7 @@ open Keys.app      # run (needs Accessibility permission)
 - `HIDManager.swift` — runs `hidutil` for HID-level key remapping (caps lock); cleans up on quit
 - `InputSourceManager.swift` — cycles enabled keyboard input sources via Carbon TIS API
 - `SnippetPicker.swift` — floating Raycast-style panel: filter snippets, paste via clipboard
+- `KeystrokeOverlay.swift` — floating NSPanel that displays pressed keys on screen; supports left/right positioning, repeat counts, modifier coalescing, animated pills
 - `EventEmitter.swift` — emits synthetic CGEvents (tagged to avoid re-interception) and clipboard paste
 - `ConfigManager.swift` — loads/watches `~/.keys.csv`, delegates updates/errors
 - `ConfigParser.swift` — config parser: `[section]` headers, CSV for remaps, RFC 4180 quoting for multi-line snippets
@@ -35,6 +36,9 @@ open Keys.app      # run (needs Accessibility permission)
 - Remap output is a `RemapOutput` enum: `.key(KeyCombo)`, `.showPicker`, `.toggleInput`, `.openApp(String)`, `.bash(String)`, `.paste(String)`
 - Caps lock remaps to real keys use `hidutil` (HID-level); all other actions use CGEventTap. Per-keyboard caps_lock rules always use CGEventTap (hidutil is system-wide)
 - `open(AppName)` launches apps via `/usr/bin/open -a`; `bash(command)` runs via `/bin/bash -c`
+- Keystroke overlay: events are forwarded from the CGEventTap callback to the overlay on the main thread; overlay state (enabled, position) persisted in UserDefaults
+- On tap disable (timeout or user input), the tap is torn down immediately — never re-enabled in place, since re-enabling without permission freezes all input system-wide. The permission polling timer restarts the tap when safe
+- Requires both Accessibility and Input Monitoring permissions (macOS Sequoia needs Input Monitoring for keyDown events). Menu shows per-permission items; polls every 2s until both granted
 - Config file watched via DispatchSource; falls back to 2-second polling if file is deleted
 - Per-keyboard remaps: `[remap:internal]` / `[remap:external]` sections. Internal keyboard detected via IOKit `Built-In` property; keyboard type matched against CGEvent's `keyboardEventKeyboardType` field. Re-detected on each config reload
 

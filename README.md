@@ -7,6 +7,7 @@ A macOS menu bar app that remaps keys and pastes text snippets.
 - **Key remapping** — single keys, modifier combos, double-tap sequences
 - **Input source toggle** — cycle keyboard languages with a single key (e.g. caps lock)
 - **Snippet picker** — trigger a floating picker with a keystroke, filter and paste
+- **Keystroke overlay** — show pressed keys on screen (great for screencasts and demos)
 - **Plain text config** — edit `~/.keys.csv`, changes apply automatically
 
 ## Requirements
@@ -24,7 +25,7 @@ A macOS menu bar app that remaps keys and pastes text snippets.
 - Removes quarantine flag so the unsigned app can run
 - Opens the app
 
-On first launch, grant Accessibility access in System Settings.
+On first launch, grant Accessibility and Input Monitoring access in System Settings.
 
 ## Configuration
 
