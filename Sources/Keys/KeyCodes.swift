@@ -32,6 +32,39 @@ enum KeyCodes {
         "command": 0x37, "right_command": 0x36,
     ]
 
+    static let keyCodeToDisplayLabel: [UInt16: String] = {
+        var map: [UInt16: String] = [:]
+        // Letters & numbers: lowercase
+        for (name, code) in nameToKeyCode where name.count == 1 {
+            map[code] = name
+        }
+        // Modifiers (derived from modifierDisplayOrder)
+        for (codes, symbol) in modifierDisplayOrder {
+            for code in codes { map[code] = symbol }
+        }
+        // Arrows
+        map[0x7B] = "←"; map[0x7C] = "→"; map[0x7E] = "↑"; map[0x7D] = "↓"
+        // Special
+        map[0x31] = "Space"; map[0x30] = "Tab"; map[0x24] = "Return"
+        map[0x35] = "Esc"; map[0x33] = "Delete"; map[0x75] = "Fwd Del"
+        map[0x39] = "Caps Lock"
+        // Function keys
+        for i in 1...20 { if let c = nameToKeyCode["f\(i)"] { map[c] = "F\(i)" } }
+        // Punctuation
+        map[0x1B] = "-"; map[0x18] = "="; map[0x21] = "["; map[0x1E] = "]"
+        map[0x2A] = "\\"; map[0x29] = ";"; map[0x27] = "'"; map[0x32] = "`"
+        map[0x2B] = ","; map[0x2F] = "."; map[0x2C] = "/"
+        return map
+    }()
+
+    /// Modifier symbol in standard macOS display order (⌃⌥⇧⌘).
+    static let modifierDisplayOrder: [(keyCode: Set<UInt16>, symbol: String)] = [
+        ([0x3B, 0x3E], "⌃"),
+        ([0x3A, 0x3D], "⌥"),
+        ([0x38, 0x3C], "⇧"),
+        ([0x37, 0x36], "⌘"),
+    ]
+
     static let keyCodeToHIDUsage: [UInt16: UInt32] = [
         // Letters
         0x00: 0x04, 0x01: 0x16, 0x02: 0x07, 0x03: 0x09, 0x04: 0x0B, 0x05: 0x0A,

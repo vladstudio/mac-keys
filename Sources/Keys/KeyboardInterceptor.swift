@@ -11,9 +11,8 @@ class KeyboardInterceptor {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var disableCount = 0
-    private var firstDisableTime: Date?
     private var internalKeyboardTypes = Set<Int64>()
+    var keystrokeOverlay: KeystrokeOverlay?
     var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
@@ -111,24 +110,11 @@ class KeyboardInterceptor {
         let pass = Unmanaged.passUnretained(event)
 
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            // AXIsProcessTrusted() can return stale cached values, so also
-            // detect permission loss by rapid consecutive disables (3+ in 2s).
-            let now = Date()
-            if let first = firstDisableTime, now.timeIntervalSince(first) < 2 {
-                disableCount += 1
-            } else {
-                firstDisableTime = now
-                disableCount = 1
-            }
-
-            if !AXIsProcessTrusted() || disableCount >= 3 {
-                disableCount = 0
-                firstDisableTime = nil
-                tearDown()
-                DispatchQueue.main.async { self.onPermissionLost?() }
-            } else if let tap = eventTap {
-                CGEvent.tapEnable(tap: tap, enable: true)
-            }
+            // Tear down immediately — never re-enable a potentially revoked tap.
+            // Re-enabling a tap without permission freezes all input system-wide.
+            // The permission polling timer will restart the tap if permission is OK.
+            tearDown()
+            DispatchQueue.main.async { self.onPermissionLost?() }
             return pass
         }
 
@@ -149,6 +135,15 @@ class KeyboardInterceptor {
 
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
             return pass
+        }
+
+        if let overlay = keystrokeOverlay, overlay.isOverlayEnabled {
+            let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let characters = (type == .keyDown) ? NSEvent(cgEvent: event)?.characters : nil
+            let flags = event.flags
+            DispatchQueue.main.async {
+                overlay.handleEvent(keyCode: keyCode, type: type, flags: flags, characters: characters)
+            }
         }
 
         guard isEnabled else { return pass }

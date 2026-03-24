@@ -2,6 +2,11 @@ import AppKit
 import IOKit.hid
 import ServiceManagement
 
+private enum Defaults {
+    static let keystrokeOverlay = "keystrokeOverlay"
+    static let keystrokeOverlayPosition = "keystrokeOverlayPosition"
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var toggleItem: NSMenuItem!
@@ -14,11 +19,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let configManager = ConfigManager()
     private let interceptor = KeyboardInterceptor()
     private let snippetPicker = SnippetPicker()
+    private let keystrokeOverlay = KeystrokeOverlay()
+    private var keystrokeSubmenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         interceptor.snippetPicker = snippetPicker
+        interceptor.keystrokeOverlay = keystrokeOverlay
         interceptor.onWarning = { [weak self] msg in self?.configDidFail(msg) }
         interceptor.onPermissionLost = { [weak self] in self?.promptPermissions() }
+
+        keystrokeOverlay.isOverlayEnabled = UserDefaults.standard.bool(forKey: Defaults.keystrokeOverlay)
+        if let pos = KeystrokeOverlay.Position(rawValue: UserDefaults.standard.integer(forKey: Defaults.keystrokeOverlayPosition)) {
+            keystrokeOverlay.position = pos
+        }
         setupMenu()
         configManager.delegate = self
         configManager.load()
@@ -57,6 +70,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        keystrokeSubmenu = NSMenu()
+        let offItem = NSMenuItem(title: "Don't Show", action: #selector(setKeystrokeMode(_:)), keyEquivalent: "")
+        offItem.target = self; offItem.tag = -1
+        keystrokeSubmenu.addItem(offItem)
+        keystrokeSubmenu.addItem(.separator())
+        for (title, pos) in [("Left", KeystrokeOverlay.Position.left),
+                              ("Right", KeystrokeOverlay.Position.right)] {
+            let item = NSMenuItem(title: title, action: #selector(setKeystrokeMode(_:)), keyEquivalent: "")
+            item.target = self; item.tag = pos.rawValue
+            keystrokeSubmenu.addItem(item)
+        }
+        let keystrokeItem = NSMenuItem(title: "Show Keystrokes", action: nil, keyEquivalent: "")
+        keystrokeItem.submenu = keystrokeSubmenu
+        menu.addItem(keystrokeItem)
+        updateKeystrokeMenu()
+
+        menu.addItem(.separator())
+
         loginItem = NSMenuItem(
             title: "Start on Login", action: #selector(toggleLoginItem), keyEquivalent: "")
         loginItem.target = self
@@ -85,6 +116,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func editConfig() {
         configManager.openInEditor()
+    }
+
+    @objc private func setKeystrokeMode(_ sender: NSMenuItem) {
+        if sender.tag == -1 {
+            keystrokeOverlay.isOverlayEnabled = false
+            UserDefaults.standard.set(false, forKey: Defaults.keystrokeOverlay)
+        } else if let pos = KeystrokeOverlay.Position(rawValue: sender.tag) {
+            keystrokeOverlay.isOverlayEnabled = true
+            keystrokeOverlay.position = pos
+            UserDefaults.standard.set(true, forKey: Defaults.keystrokeOverlay)
+            UserDefaults.standard.set(pos.rawValue, forKey: Defaults.keystrokeOverlayPosition)
+            keystrokeOverlay.relayout()
+        }
+        updateKeystrokeMenu()
+    }
+
+    private func updateKeystrokeMenu() {
+        for item in keystrokeSubmenu.items where !item.isSeparatorItem {
+            if !keystrokeOverlay.isOverlayEnabled {
+                item.state = item.tag == -1 ? .on : .off
+            } else {
+                item.state = item.tag == keystrokeOverlay.position.rawValue ? .on : .off
+            }
+        }
     }
 
     @objc private func openAbout() {
@@ -177,32 +232,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         toggleItem.title = "Keys is OFF (no permission)"
         toggleItem.action = nil
-        updatePermissionItems()
 
-        permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.updatePermissionItems()
-            guard self.hasAccessibility, self.hasInputMonitoring else { return }
-            if self.interceptor.start() {
-                self.permissionsGranted()
-            }
-        }
-    }
-
-    private func updatePermissionItems() {
         let menu = statusItem.menu!
-
         if !hasAccessibility && accessibilityItem == nil {
             let item = NSMenuItem(title: "Grant Accessibility Access…",
                                   action: #selector(openAccessibilitySettings), keyEquivalent: "")
             item.target = self
             menu.insertItem(item, at: 0)
             accessibilityItem = item
-        } else if hasAccessibility, let item = accessibilityItem {
-            menu.removeItem(item)
-            accessibilityItem = nil
         }
-
         if !hasInputMonitoring && inputMonitoringItem == nil {
             let item = NSMenuItem(title: "Grant Input Monitoring Access…",
                                   action: #selector(openInputMonitoringSettings), keyEquivalent: "")
@@ -210,20 +248,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let idx = accessibilityItem != nil ? 1 : 0
             menu.insertItem(item, at: idx)
             inputMonitoringItem = item
-        } else if hasInputMonitoring, let item = inputMonitoringItem {
-            menu.removeItem(item)
-            inputMonitoringItem = nil
         }
-
-        let needsSep = accessibilityItem != nil || inputMonitoringItem != nil
-        if needsSep && permissionSeparator == nil {
+        if (accessibilityItem != nil || inputMonitoringItem != nil) && permissionSeparator == nil {
             let sep = NSMenuItem.separator()
             let idx = (accessibilityItem != nil ? 1 : 0) + (inputMonitoringItem != nil ? 1 : 0)
             menu.insertItem(sep, at: idx)
             permissionSeparator = sep
-        } else if !needsSep, let sep = permissionSeparator {
-            menu.removeItem(sep)
-            permissionSeparator = nil
+        }
+
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+
+            // interceptor.start() is the reliable accessibility check (bypasses TCC cache)
+            let tapOK = self.interceptor.start()
+            if tapOK, let item = self.accessibilityItem {
+                self.statusItem.menu?.removeItem(item)
+                self.accessibilityItem = nil
+            }
+
+            // IOHIDCheckAccess may also cache; re-request to nudge it
+            let inputOK = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
+            if inputOK, let item = self.inputMonitoringItem {
+                self.statusItem.menu?.removeItem(item)
+                self.inputMonitoringItem = nil
+            }
+
+            // Update separator
+            let needsSep = self.accessibilityItem != nil || self.inputMonitoringItem != nil
+            if !needsSep, let sep = self.permissionSeparator {
+                self.statusItem.menu?.removeItem(sep)
+                self.permissionSeparator = nil
+            }
+
+            if tapOK && inputOK {
+                self.permissionsGranted()
+            }
         }
     }
 
