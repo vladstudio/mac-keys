@@ -1,4 +1,5 @@
 import AppKit
+import IOKit.hid
 import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -6,8 +7,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var toggleItem: NSMenuItem!
     private var errorItem: NSMenuItem?
     private var accessibilityItem: NSMenuItem?
-    private var accessibilitySeparator: NSMenuItem?
-    private var accessibilityTimer: Timer?
+    private var inputMonitoringItem: NSMenuItem?
+    private var permissionSeparator: NSMenuItem?
+    private var permissionTimer: Timer?
     private var loginItem: NSMenuItem!
     private let configManager = ConfigManager()
     private let interceptor = KeyboardInterceptor()
@@ -16,15 +18,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         interceptor.snippetPicker = snippetPicker
         interceptor.onWarning = { [weak self] msg in self?.configDidFail(msg) }
-        interceptor.onPermissionLost = { [weak self] in self?.promptAccessibility() }
+        interceptor.onPermissionLost = { [weak self] in self?.promptPermissions() }
         setupMenu()
         configManager.delegate = self
         configManager.load()
         configManager.startWatching()
 
-        if !interceptor.start() {
-            promptAccessibility()
-        }
+        ensurePermissions()
     }
 
     // MARK: - Menu
@@ -148,50 +148,108 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return image
     }
 
-    private func promptAccessibility() {
-        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let opts = [key: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(opts)
+    // MARK: - Permissions
 
-        let sep = NSMenuItem.separator()
-        let item = NSMenuItem(
-            title: "Grant Accessibility Access…",
-            action: #selector(openAccessibilitySettings), keyEquivalent: "")
-        item.target = self
-        statusItem.menu?.insertItem(item, at: 0)
-        statusItem.menu?.insertItem(sep, at: 1)
-        accessibilityItem = item
-        accessibilitySeparator = sep
+    private var hasAccessibility: Bool { AXIsProcessTrusted() }
+    private var hasInputMonitoring: Bool {
+        IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
+    }
+
+    private func ensurePermissions() {
+        if !hasAccessibility {
+            let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+            _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+        }
+        if !hasInputMonitoring {
+            IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        }
+
+        if !hasAccessibility || !hasInputMonitoring {
+            promptPermissions()
+        } else if !interceptor.start() {
+            promptPermissions()
+        }
+    }
+
+    private func promptPermissions() {
+        interceptor.stop()
+        guard permissionTimer == nil else { return }
 
         toggleItem.title = "Keys is OFF (no permission)"
         toggleItem.action = nil
+        updatePermissionItems()
 
-        // Poll until permission is granted (AXIsProcessTrusted can cache; try the tap directly)
-        accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self = self else { return }
+            self.updatePermissionItems()
+            guard self.hasAccessibility, self.hasInputMonitoring else { return }
             if self.interceptor.start() {
-                self.accessibilityGranted()
+                self.permissionsGranted()
             }
         }
     }
 
-    private func accessibilityGranted() {
-        accessibilityTimer?.invalidate()
-        accessibilityTimer = nil
+    private func updatePermissionItems() {
+        let menu = statusItem.menu!
 
-        if let item = accessibilityItem { statusItem.menu?.removeItem(item) }
-        if let sep = accessibilitySeparator { statusItem.menu?.removeItem(sep) }
+        if !hasAccessibility && accessibilityItem == nil {
+            let item = NSMenuItem(title: "Grant Accessibility Access…",
+                                  action: #selector(openAccessibilitySettings), keyEquivalent: "")
+            item.target = self
+            menu.insertItem(item, at: 0)
+            accessibilityItem = item
+        } else if hasAccessibility, let item = accessibilityItem {
+            menu.removeItem(item)
+            accessibilityItem = nil
+        }
+
+        if !hasInputMonitoring && inputMonitoringItem == nil {
+            let item = NSMenuItem(title: "Grant Input Monitoring Access…",
+                                  action: #selector(openInputMonitoringSettings), keyEquivalent: "")
+            item.target = self
+            let idx = accessibilityItem != nil ? 1 : 0
+            menu.insertItem(item, at: idx)
+            inputMonitoringItem = item
+        } else if hasInputMonitoring, let item = inputMonitoringItem {
+            menu.removeItem(item)
+            inputMonitoringItem = nil
+        }
+
+        let needsSep = accessibilityItem != nil || inputMonitoringItem != nil
+        if needsSep && permissionSeparator == nil {
+            let sep = NSMenuItem.separator()
+            let idx = (accessibilityItem != nil ? 1 : 0) + (inputMonitoringItem != nil ? 1 : 0)
+            menu.insertItem(sep, at: idx)
+            permissionSeparator = sep
+        } else if !needsSep, let sep = permissionSeparator {
+            menu.removeItem(sep)
+            permissionSeparator = nil
+        }
+    }
+
+    private func permissionsGranted() {
+        permissionTimer?.invalidate()
+        permissionTimer = nil
+
+        for item in [accessibilityItem, inputMonitoringItem, permissionSeparator].compactMap({ $0 }) {
+            statusItem.menu?.removeItem(item)
+        }
         accessibilityItem = nil
-        accessibilitySeparator = nil
+        inputMonitoringItem = nil
+        permissionSeparator = nil
 
         toggleItem.title = "Keys is ON"
         toggleItem.action = #selector(toggle)
 
-        configManager.load() // apply config to the now-running interceptor
+        configManager.load()
     }
 
     @objc private func openAccessibilitySettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+
+    @objc private func openInputMonitoringSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
     }
 }
 

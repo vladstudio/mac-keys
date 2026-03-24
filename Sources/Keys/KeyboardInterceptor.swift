@@ -17,6 +17,7 @@ class KeyboardInterceptor {
     var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
+        guard eventTap == nil else { return true }
         let eventMask: CGEventMask =
             (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
