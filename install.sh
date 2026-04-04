@@ -12,6 +12,5 @@ unzip -q "$TMP/Keys.zip" -d "$TMP"
 pkill -x Keys 2>/dev/null || true
 rm -rf /Applications/Keys.app
 mv "$TMP/Keys.app" /Applications/
-xattr -dr com.apple.quarantine /Applications/Keys.app 2>/dev/null || true
 open /Applications/Keys.app
 echo "==> Installed Keys"
