@@ -71,12 +71,12 @@ class KeyboardInterceptor {
         var capsLockKeyboards = Set<KeyboardTarget>()
 
         for rule in config.remaps {
-            let isCapsLock = {
-                if case .single(let combo) = rule.input {
-                    return combo.keyCode == 0x39 && combo.modifiers.isEmpty
-                }
-                return false
-            }()
+            let isCapsLock: Bool
+            if case .single(let combo) = rule.input {
+                isCapsLock = combo.keyCode == 0x39 && combo.modifiers.isEmpty
+            } else {
+                isCapsLock = false
+            }
 
             if isCapsLock && capsLockKeyboards.contains(rule.keyboard) {
                 onWarning?("Multiple caps_lock rules for same keyboard; using first, ignoring rest")
@@ -178,30 +178,29 @@ class KeyboardInterceptor {
         switch result {
         case .consumed:
             return nil
-        case .showPicker:
-            DispatchQueue.main.async { self.snippetPicker?.show(snippets: self.snippets) }
-            return nil
-        case .toggleInput:
-            DispatchQueue.main.async { InputSourceManager.toggle() }
-            return nil
-        case .openApp(let name):
+        case .action(let output):
             DispatchQueue.main.async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                process.arguments = ["-a", name]
-                try? process.run()
+                switch output {
+                case .showPicker:
+                    self.snippetPicker?.show(snippets: self.snippets)
+                case .toggleInput:
+                    InputSourceManager.toggle()
+                case .openApp(let name):
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                    process.arguments = ["-a", name]
+                    try? process.run()
+                case .bash(let cmd):
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                    process.arguments = ["-c", cmd]
+                    try? process.run()
+                case .paste(let text):
+                    EventEmitter.pasteText(text)
+                case .key, .ignore:
+                    break
+                }
             }
-            return nil
-        case .bash(let cmd):
-            DispatchQueue.main.async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = ["-c", cmd]
-                try? process.run()
-            }
-            return nil
-        case .paste(let text):
-            DispatchQueue.main.async { EventEmitter.pasteText(text) }
             return nil
         case .passThrough:
             return pass

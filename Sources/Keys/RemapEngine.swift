@@ -15,11 +15,7 @@ class RemapEngine {
     enum Result {
         case passThrough
         case consumed
-        case showPicker
-        case toggleInput
-        case openApp(String)
-        case bash(String)
-        case paste(String)
+        case action(RemapOutput)
     }
 
     func update(rules: [RemapRule]) {
@@ -72,12 +68,10 @@ class RemapEngine {
         case .key(let combo):
             EventEmitter.emitKeyPress(keyCode: combo.keyCode, flags: combo.modifiers)
             return .consumed
-        case .showPicker: return .showPicker
-        case .toggleInput: return .toggleInput
-        case .openApp(let name): return .openApp(name)
-        case .bash(let cmd): return .bash(cmd)
-        case .paste(let text): return .paste(text)
-        case .ignore: return .consumed
+        case .ignore:
+            return .consumed
+        default:
+            return .action(output)
         }
     }
 

@@ -58,7 +58,7 @@ class ConfigManager {
         # caps_lock,f20
         #
         # [snippet]
-        # :hi,Hello world
+        # Hello world,hi
         """
         FileManager.default.createFile(atPath: configPath, contents: content.data(using: .utf8))
     }

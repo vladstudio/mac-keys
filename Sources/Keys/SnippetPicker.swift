@@ -74,7 +74,7 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
         center()
         makeKeyAndOrderFront(nil)
         makeFirstResponder(search)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 
     private func refilter() {

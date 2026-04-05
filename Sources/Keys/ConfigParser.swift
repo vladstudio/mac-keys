@@ -68,6 +68,10 @@ enum ConfigParser {
                 guard let output = KeyCodes.parseOutput(second) else {
                     throw Error.unknownKey(i + 1, second)
                 }
+                if case .sequence(let combos) = input,
+                   !(combos.count == 2 && combos[0].keyCode == combos[1].keyCode) {
+                    throw Error.invalidLine(i + 1, "only double-tap sequences supported")
+                }
                 config.remaps.append(RemapRule(input: input, output: output, keyboard: currentKeyboard))
                 i += linesConsumed
                 continue

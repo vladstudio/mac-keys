@@ -21,6 +21,5 @@ enum HIDManager {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
         process.arguments = ["property", "--set", json]
         try? process.run()
-        process.waitUntilExit()
     }
 }

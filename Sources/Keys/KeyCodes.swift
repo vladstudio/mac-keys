@@ -199,10 +199,10 @@ enum KeyCodes {
         if let keyType = mediaKeyTypes[lower] {
             return .mediaKey(keyType)
         }
-        if string.contains(", ") {
-            let steps = string.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let steps = string.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        if steps.count >= 2 {
             let combos = steps.compactMap { parseCombo($0) }
-            guard combos.count == steps.count, combos.count >= 2 else { return nil }
+            guard combos.count == steps.count else { return nil }
             return .sequence(combos)
         }
         guard let combo = parseCombo(string) else { return nil }
