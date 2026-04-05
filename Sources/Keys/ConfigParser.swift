@@ -35,7 +35,7 @@ enum ConfigParser {
             }
 
             // [section]
-            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") && !trimmed.hasPrefix("[[") {
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
                 let raw = String(trimmed.dropFirst(1).dropLast(1))
                     .trimmingCharacters(in: .whitespaces)
                 let name = raw.lowercased()
@@ -61,45 +61,54 @@ enum ConfigParser {
 
             switch sec {
             case "remap":
-                let (first, second, linesConsumed) = try parseCSVLine(lines: lines, startIndex: i)
-                guard let input = KeyCodes.parseInput(first) else {
-                    throw Error.unknownKey(i + 1, first)
+                // input: output — split on first ":"
+                guard let colonIdx = trimmed.firstIndex(of: ":") else {
+                    throw Error.invalidLine(i + 1, String(lines[i]))
                 }
-                guard let output = KeyCodes.parseOutput(second) else {
-                    throw Error.unknownKey(i + 1, second)
+                let inputStr = String(trimmed[..<colonIdx]).trimmingCharacters(in: .whitespaces)
+                let outputStr = String(trimmed[trimmed.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+                guard !inputStr.isEmpty, !outputStr.isEmpty else {
+                    throw Error.invalidLine(i + 1, String(lines[i]))
+                }
+                guard let input = KeyCodes.parseInput(inputStr) else {
+                    throw Error.unknownKey(i + 1, inputStr)
+                }
+                guard let output = KeyCodes.parseOutput(outputStr) else {
+                    throw Error.unknownKey(i + 1, outputStr)
                 }
                 if case .sequence(let combos) = input,
                    !(combos.count == 2 && combos[0].keyCode == combos[1].keyCode) {
                     throw Error.invalidLine(i + 1, "only double-tap sequences supported")
                 }
                 config.remaps.append(RemapRule(input: input, output: output, keyboard: currentKeyboard))
-                i += linesConsumed
-                continue
-            case "snippet":
-                let remaining = lines[i...].joined(separator: "\n")
-                let (text, afterText) = try readCSVField(remaining, from: remaining.startIndex, line: i + 1)
-                var keyword: String?
-                var endPos = afterText
-                // Check for optional comma + keyword
-                var pos = afterText
-                while pos < remaining.endIndex && remaining[pos] == " " {
-                    pos = remaining.index(after: pos)
-                }
-                if pos < remaining.endIndex && remaining[pos] == "," {
-                    pos = remaining.index(after: pos)
-                    let (kw, afterKw) = try readCSVField(remaining, from: pos, line: i + 1)
-                    if !kw.isEmpty { keyword = kw }
-                    endPos = afterKw
-                }
-                let linesConsumed = remaining[remaining.startIndex..<endPos].filter { $0 == "\n" }.count + 1
-                config.snippets.append(Snippet(text: text, keyword: keyword))
-                i += linesConsumed
-                continue
-            default:
-                break
-            }
+                i += 1
 
-            i += 1
+            case "snippet":
+                if trimmed.hasPrefix("\"") {
+                    // Quoted snippet (may contain colons, may span lines). No alias.
+                    let remaining = lines[i...].joined(separator: "\n")
+                    let (text, afterIdx) = try readQuoted(remaining, from: remaining.index(after: remaining.startIndex), line: i + 1)
+                    let linesConsumed = remaining[remaining.startIndex..<afterIdx].filter { $0 == "\n" }.count + 1
+                    config.snippets.append(Snippet(text: text, keyword: nil))
+                    i += linesConsumed
+                } else if let colonIdx = trimmed.firstIndex(of: ":") {
+                    // alias: text
+                    let alias = String(trimmed[..<colonIdx]).trimmingCharacters(in: .whitespaces)
+                    let text = String(trimmed[trimmed.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+                    guard !alias.isEmpty, !text.isEmpty else {
+                        throw Error.invalidLine(i + 1, String(lines[i]))
+                    }
+                    config.snippets.append(Snippet(text: text, keyword: alias))
+                    i += 1
+                } else {
+                    // Plain text, no alias
+                    config.snippets.append(Snippet(text: trimmed, keyword: nil))
+                    i += 1
+                }
+
+            default:
+                i += 1
+            }
         }
 
         return config
@@ -107,82 +116,25 @@ enum ConfigParser {
 
     // MARK: - Private
 
-    /// Parses a CSV row starting at `startIndex`, returning (field1, field2, linesConsumed).
-    /// Supports RFC 4180 quoting: fields wrapped in double quotes can contain commas,
-    /// newlines, and escaped double quotes (doubled: "").
-    private static func parseCSVLine(lines: [String], startIndex: Int) throws -> (String, String, Int) {
-        // Join from startIndex to handle multiline quoted fields
-        let remaining = lines[startIndex...].joined(separator: "\n")
-        var pos = remaining.startIndex
-
-        // Skip leading whitespace
-        while pos < remaining.endIndex && remaining[pos].isWhitespace && remaining[pos] != "\n" {
-            pos = remaining.index(after: pos)
-        }
-
-        let (first, afterFirst) = try readCSVField(remaining, from: pos, line: startIndex + 1)
-
-        // Expect comma separator
-        pos = afterFirst
-        while pos < remaining.endIndex && remaining[pos].isWhitespace && remaining[pos] != "\n" {
-            pos = remaining.index(after: pos)
-        }
-        guard pos < remaining.endIndex && remaining[pos] == "," else {
-            throw Error.invalidLine(startIndex + 1, String(lines[startIndex]))
-        }
-        pos = remaining.index(after: pos) // skip comma
-
-        let (second, afterSecond) = try readCSVField(remaining, from: pos, line: startIndex + 1)
-
-        // Count how many lines were consumed
-        let consumed = remaining[remaining.startIndex..<afterSecond]
-        let linesConsumed = consumed.filter { $0 == "\n" }.count + 1
-
-        return (first, second, linesConsumed)
-    }
-
-    /// Reads one CSV field from position `from`. Returns (fieldValue, indexAfterField).
-    private static func readCSVField(_ s: String, from start: String.Index, line: Int) throws -> (String, String.Index) {
+    /// Read quoted string starting after the opening `"`. Returns (text, indexAfterClosingQuote).
+    /// Supports multiline. `""` escapes a literal `"`.
+    private static func readQuoted(_ s: String, from start: String.Index, line: Int) throws -> (String, String.Index) {
         var pos = start
-
-        // Skip leading whitespace (not newlines)
-        while pos < s.endIndex && s[pos] == " " {
-            pos = s.index(after: pos)
-        }
-
-        guard pos < s.endIndex else {
-            throw Error.invalidLine(line, "")
-        }
-
-        if s[pos] == "\"" {
-            // Quoted field — read until unescaped closing quote
-            pos = s.index(after: pos) // skip opening quote
-            var result = ""
-            while pos < s.endIndex {
-                if s[pos] == "\"" {
-                    let next = s.index(after: pos)
-                    if next < s.endIndex && s[next] == "\"" {
-                        // Escaped double quote
-                        result.append("\"")
-                        pos = s.index(after: next)
-                    } else {
-                        // Closing quote
-                        return (result, next)
-                    }
+        var result = ""
+        while pos < s.endIndex {
+            if s[pos] == "\"" {
+                let next = s.index(after: pos)
+                if next < s.endIndex && s[next] == "\"" {
+                    result.append("\"")
+                    pos = s.index(after: next)
                 } else {
-                    result.append(s[pos])
-                    pos = s.index(after: pos)
+                    return (result, next)
                 }
-            }
-            throw Error.unterminatedQuote(line)
-        } else {
-            // Unquoted field — read until comma or newline
-            let fieldStart = pos
-            while pos < s.endIndex && s[pos] != "," && s[pos] != "\n" {
+            } else {
+                result.append(s[pos])
                 pos = s.index(after: pos)
             }
-            let value = String(s[fieldStart..<pos]).trimmingCharacters(in: .init(charactersIn: " "))
-            return (value, pos)
         }
+        throw Error.unterminatedQuote(line)
     }
 }

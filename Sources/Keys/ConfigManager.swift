@@ -10,9 +10,17 @@ class ConfigManager {
     weak var delegate: ConfigManagerDelegate?
 
     let configPath: String = {
-        // Migrate from old location
+        // Migrate from old locations
         ConfigDir.migrate(from: "~/.keys.csv", to: "keys", fileName: "keys.csv")
-        return ConfigDir.url(for: "keys").appendingPathComponent("keys.csv").path
+        let dir = ConfigDir.url(for: "keys")
+        let newPath = dir.appendingPathComponent("keys.conf").path
+        let oldPath = dir.appendingPathComponent("keys.csv").path
+        // Migrate from .csv to .conf
+        if !FileManager.default.fileExists(atPath: newPath),
+           FileManager.default.fileExists(atPath: oldPath) {
+            try? FileManager.default.moveItem(atPath: oldPath, toPath: newPath)
+        }
+        return newPath
     }()
 
     private var fileDescriptor: Int32 = -1
@@ -55,10 +63,10 @@ class ConfigManager {
         # Keys — https://keys.vlad.studio
         #
         # [remap]
-        # caps_lock,f20
+        # caps_lock: f20
         #
         # [snippet]
-        # Hello world,hi
+        # hi: Hello world
         """
         FileManager.default.createFile(atPath: configPath, contents: content.data(using: .utf8))
     }

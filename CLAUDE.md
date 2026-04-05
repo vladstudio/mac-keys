@@ -21,14 +21,14 @@ open Keys.app      # run (needs Accessibility permission)
 - `SnippetPicker.swift` — floating Raycast-style panel: filter snippets, paste via clipboard
 - `KeystrokeOverlay.swift` — floating NSPanel that displays pressed keys on screen; supports left/right positioning, repeat counts, modifier coalescing, animated pills
 - `EventEmitter.swift` — emits synthetic CGEvents (tagged to avoid re-interception) and clipboard paste
-- `ConfigManager.swift` — loads/watches `~/.keys.csv`, delegates updates/errors
-- `ConfigParser.swift` — config parser: `[section]` headers, CSV for remaps, RFC 4180 quoting for multi-line snippets
+- `ConfigManager.swift` — loads/watches `~/.config/keys/keys.conf`, delegates updates/errors
+- `ConfigParser.swift` — config parser: `[section]` headers, colon-separated `key: value` for remaps/snippets, `"quoted"` for text containing colons or spanning multiple lines
 - `Config.swift` — data models: KeyCombo, RemapOutput, RemapRule, Config, KeyboardTarget
 - `KeyCodes.swift` — key name ↔ CGKeyCode mappings, CGKeyCode ↔ HID usage ID mappings, combo/sequence parsing
 
 ## Key design decisions
 
-- No external dependencies — config parser is hand-written CSV with RFC 4180 quoting
+- No external dependencies — config parser is hand-written colon-separated format with `"quoted"` strings
 - Events we emit are tagged via `.eventSourceUserData` field (magic value `0x4B455953`) so the tap callback skips them
 - Modifier double-tap detection: track tap timestamps, fire on second press within 400ms
 - Sequence rules take priority over single remap rules for the same key
@@ -44,4 +44,4 @@ open Keys.app      # run (needs Accessibility permission)
 
 ## Config format
 
-`~/.keys.csv`. Two section types: `[remap]` and `[snippet]`. Remap sections support keyboard targeting: `[remap]` (all), `[remap:internal]` (built-in), `[remap:external]` (USB/Bluetooth). Remap rules are two comma-separated fields. Snippet lines are plain text (one per line), or RFC 4180 quoted for multi-line. See `example.keys.csv`.
+`~/.config/keys/keys.conf`. Two section types: `[remap]` and `[snippet]`. Remap sections support keyboard targeting: `[remap]` (all), `[remap:internal]` (built-in), `[remap:external]` (USB/Bluetooth). Remaps: `input: output`. Snippets: `alias: text` or plain text (no alias). Quote with `"..."` if text contains `:` or spans multiple lines. `""` escapes a literal `"`. See `example.keys.conf`.
