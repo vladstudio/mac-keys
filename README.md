@@ -12,7 +12,7 @@ A macOS menu bar app that remaps keys and pastes text snippets.
 
 ## Requirements
 
-- macOS 14 (Sonoma) or later
+- macOS 15 (Sequoia) or later
 
 ## Install
 
