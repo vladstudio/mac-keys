@@ -1,16 +1,19 @@
 #!/bin/bash
 set -e
 
+APP_NAME="Keys"
+REPO="vladstudio/mac-keys"
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-URL=$(curl -sL https://api.github.com/repos/vladstudio/mac-keys/releases/latest \
+URL=$(curl -sL "https://api.github.com/repos/$REPO/releases/latest" \
   | grep browser_download_url | head -1 | cut -d'"' -f4)
-curl -sL "$URL" -o "$TMP/Keys.zip"
-unzip -q "$TMP/Keys.zip" -d "$TMP"
+curl -sL "$URL" -o "$TMP/$APP_NAME.zip"
+unzip -q "$TMP/$APP_NAME.zip" -d "$TMP"
 
-pkill -x Keys 2>/dev/null || true
-rm -rf /Applications/Keys.app
-mv "$TMP/Keys.app" /Applications/
-open /Applications/Keys.app
-echo "==> Installed Keys"
+pkill -x "$APP_NAME" 2>/dev/null || true
+rm -rf "/Applications/$APP_NAME.app"
+mv "$TMP/$APP_NAME.app" /Applications/
+open "/Applications/$APP_NAME.app"
+echo "==> Installed $APP_NAME"

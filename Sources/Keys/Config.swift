@@ -3,11 +3,11 @@ import CoreGraphics
 enum KeyboardTarget: Hashable {
     case all, `internal`, external
 
-    func matches(isInternal: Bool) -> Bool {
+    func matches(isInternal: Bool?) -> Bool {
         switch self {
         case .all: return true
-        case .internal: return isInternal
-        case .external: return !isInternal
+        case .internal: return isInternal == true
+        case .external: return isInternal == false
         }
     }
 }

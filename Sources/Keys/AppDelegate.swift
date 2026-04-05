@@ -1,6 +1,6 @@
 import AppKit
 import IOKit.hid
-import ServiceManagement
+import MacAppKit
 
 private enum Defaults {
     static let keystrokeOverlay = "keystrokeOverlay"
@@ -149,15 +149,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleLoginItem() {
-        let service = SMAppService.mainApp
-        do {
-            if service.status == .enabled {
-                try service.unregister()
-            } else {
-                try service.register()
-            }
-        } catch {}
-        loginItem.state = service.status == .enabled ? .on : .off
+        LoginItem.toggle()
+        loginItem.state = LoginItem.isEnabled ? .on : .off
     }
 
     @objc private func quitApp() {
@@ -171,12 +164,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Helpers
 
     private func setupLoginItem() {
-        let service = SMAppService.mainApp
-        if !UserDefaults.standard.bool(forKey: "loginItemConfigured") {
-            UserDefaults.standard.set(true, forKey: "loginItemConfigured")
-            try? service.register()
-        }
-        loginItem.state = service.status == .enabled ? .on : .off
+        LoginItem.enableOnFirstLaunch()
+        loginItem.state = LoginItem.isEnabled ? .on : .off
     }
 
     private func updateIcon() {
@@ -205,19 +194,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Permissions
 
-    private var hasAccessibility: Bool { AXIsProcessTrusted() }
-    private var hasInputMonitoring: Bool {
-        IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
-    }
+    private var hasAccessibility: Bool { Permissions.isGranted(.accessibility) }
+    private var hasInputMonitoring: Bool { Permissions.isGranted(.inputMonitoring) }
 
     private func ensurePermissions() {
-        if !hasAccessibility {
-            let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-            _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
-        }
-        if !hasInputMonitoring {
-            IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-        }
+        if !hasAccessibility { Permissions.request(.accessibility) }
+        if !hasInputMonitoring { Permissions.request(.inputMonitoring) }
 
         if !hasAccessibility || !hasInputMonitoring {
             promptPermissions()
@@ -304,11 +286,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openAccessibilitySettings() {
-        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        Permissions.openSettings(.accessibility)
     }
 
     @objc private func openInputMonitoringSettings() {
-        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+        Permissions.openSettings(.inputMonitoring)
     }
 }
 

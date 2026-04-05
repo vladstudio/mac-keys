@@ -41,7 +41,7 @@ class RemapEngine {
         lastModifierTap = nil
     }
 
-    func handleMediaKey(keyType: Int32, isDown: Bool, isInternal: Bool) -> Result {
+    func handleMediaKey(keyType: Int32, isDown: Bool, isInternal: Bool?) -> Result {
         guard let entries = mediaKeyRules[keyType],
               let match = entries.first(where: { $0.keyboard.matches(isInternal: isInternal) })
         else { return .passThrough }

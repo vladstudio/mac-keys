@@ -1,4 +1,5 @@
 import AppKit
+import MacAppKit
 
 protocol ConfigManagerDelegate: AnyObject {
     func configDidUpdate(_ config: Config)
@@ -9,8 +10,9 @@ class ConfigManager {
     weak var delegate: ConfigManagerDelegate?
 
     let configPath: String = {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.keys.csv"
+        // Migrate from old location
+        ConfigDir.migrate(from: "~/.keys.csv", to: "keys", fileName: "keys.csv")
+        return ConfigDir.url(for: "keys").appendingPathComponent("keys.csv").path
     }()
 
     private var fileDescriptor: Int32 = -1
