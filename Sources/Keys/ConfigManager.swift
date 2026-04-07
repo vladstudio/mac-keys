@@ -59,7 +59,7 @@ class ConfigManager {
 
     private func createDefault() {
         let content = """
-        # Keys — https://keys.vlad.studio
+        # Keys — https://apps.vlad.studio/keys
         #
         # [remap]
         # caps_lock: f20
