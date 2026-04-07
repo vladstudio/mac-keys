@@ -23,7 +23,6 @@ class ConfigManager {
         return newPath
     }()
 
-    private var fileDescriptor: Int32 = -1
     private var dispatchSource: DispatchSourceFileSystemObject?
     private var pollTimer: DispatchSourceTimer?
 
@@ -80,7 +79,6 @@ class ConfigManager {
             return
         }
 
-        fileDescriptor = fd
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
             eventMask: [.write, .delete, .rename, .extend],
@@ -97,12 +95,8 @@ class ConfigManager {
             }
         }
 
-        source.setCancelHandler { [weak self] in
-            guard let self = self else { return }
-            if self.fileDescriptor != -1 {
-                Darwin.close(self.fileDescriptor)
-                self.fileDescriptor = -1
-            }
+        source.setCancelHandler {
+            Darwin.close(fd)
         }
 
         dispatchSource = source

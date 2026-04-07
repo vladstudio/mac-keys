@@ -1,6 +1,6 @@
 # Keys
 
-<img src="icon-1024.png" width="128" alt="Keys icon">
+<img src="keys.png" width="128" alt="Keys icon">
 
 A macOS menu bar app that remaps keys and pastes text snippets.
 
@@ -16,14 +16,13 @@ A macOS menu bar app that remaps keys and pastes text snippets.
 
 ## Install
 
-```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vladstudio/mac-keys/main/install.sh)"
-```
+[Download Keys.zip](https://github.com/vladstudio/keys/releases/latest/download/Keys.zip), unzip, and move to Applications.
 
-- Downloads the latest release from GitHub
-- Installs to `/Applications` (replaces existing version)
-- Removes quarantine flag so the unsigned app can run
-- Opens the app
+Or via terminal:
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vladstudio/keys/main/install.sh)"
+```
 
 On first launch, grant Accessibility and Input Monitoring access in System Settings.
 

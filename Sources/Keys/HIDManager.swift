@@ -20,6 +20,6 @@ enum HIDManager {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
         process.arguments = ["property", "--set", json]
-        try? process.run()
+        do { try process.run() } catch { NSLog("Keys: hidutil failed: %@", "\(error)") }
     }
 }

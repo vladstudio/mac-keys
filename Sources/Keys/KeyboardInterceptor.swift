@@ -189,12 +189,12 @@ class KeyboardInterceptor {
                     let process = Process()
                     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
                     process.arguments = ["-a", name]
-                    try? process.run()
+                    do { try process.run() } catch { self.onWarning?("open(\(name)): \(error.localizedDescription)") }
                 case .bash(let cmd):
                     let process = Process()
                     process.executableURL = URL(fileURLWithPath: "/bin/bash")
                     process.arguments = ["-c", cmd]
-                    try? process.run()
+                    do { try process.run() } catch { self.onWarning?("bash: \(error.localizedDescription)") }
                 case .paste(let text):
                     EventEmitter.pasteText(text)
                 case .key, .ignore:

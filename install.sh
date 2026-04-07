@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="Keys"
-REPO="vladstudio/mac-keys"
+REPO="vladstudio/keys"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

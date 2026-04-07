@@ -86,7 +86,7 @@ enum ConfigParser {
             case "snippet":
                 if trimmed.hasPrefix("\"") {
                     // Quoted snippet (may contain colons, may span lines). No alias.
-                    let remaining = lines[i...].joined(separator: "\n")
+                    let remaining = ([trimmed] + lines[(i+1)...]).joined(separator: "\n")
                     let (text, afterIdx) = try readQuoted(remaining, from: remaining.index(after: remaining.startIndex), line: i + 1)
                     let linesConsumed = remaining[remaining.startIndex..<afterIdx].filter { $0 == "\n" }.count + 1
                     config.snippets.append(Snippet(text: text, keyword: nil))
@@ -107,7 +107,7 @@ enum ConfigParser {
                 }
 
             default:
-                i += 1
+                fatalError("unreachable: section is always remap or snippet")
             }
         }
 
