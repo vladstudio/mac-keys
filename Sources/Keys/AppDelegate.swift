@@ -64,7 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         let edit = NSMenuItem(
-            title: "Edit Config", action: #selector(editConfig), keyEquivalent: "e")
+            title: "Open Config Folder", action: #selector(openConfigFolder), keyEquivalent: "")
         edit.target = self
         menu.addItem(edit)
 
@@ -114,8 +114,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateIcon()
     }
 
-    @objc private func editConfig() {
-        configManager.openInEditor()
+    @objc private func openConfigFolder() {
+        configManager.openFolder()
     }
 
     @objc private func setKeystrokeMode(_ sender: NSMenuItem) {

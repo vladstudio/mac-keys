@@ -1,6 +1,6 @@
 # Keys
 
-<img src="keys.png" width="128" alt="Keys icon">
+<img src="keys.png" width="128" alt="App icon">
 
 A macOS menu bar app that remaps keys and pastes text snippets.
 
