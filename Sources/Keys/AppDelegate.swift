@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var keystrokeSubmenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        HIDManager.cleanUpIfNeeded()
         interceptor.snippetPicker = snippetPicker
         interceptor.keystrokeOverlay = keystrokeOverlay
         interceptor.onWarning = { [weak self] msg in self?.configDidFail(msg) }

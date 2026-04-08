@@ -147,7 +147,7 @@ class SnippetPicker: NSPanel, NSTextFieldDelegate, NSTableViewDataSource, NSTabl
     }
 
     @objc private func pick() {
-        guard table.selectedRow >= 0 else { return }
+        guard table.selectedRow >= 0, table.selectedRow < filtered.count else { return }
         let text = filtered[table.selectedRow].text
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {

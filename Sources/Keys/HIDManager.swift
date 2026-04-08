@@ -1,6 +1,15 @@
 import Foundation
 
 enum HIDManager {
+    private static let dirtyKey = "HIDManagerDirty"
+
+    /// Call on launch: if the previous run crashed with active mappings, clean them up.
+    static func cleanUpIfNeeded() {
+        if UserDefaults.standard.bool(forKey: dirtyKey) {
+            reset()
+        }
+    }
+
     static func apply(mappings: [(src: UInt16, dst: UInt16)]) {
         let entries = mappings.compactMap { mapping -> String? in
             guard let srcHID = KeyCodes.keyCodeToHIDUsage[mapping.src],
@@ -9,11 +18,13 @@ enum HIDManager {
             let dst = 0x700000000 | UInt64(dstHID)
             return "{\"HIDKeyboardModifierMappingSrc\":\(src),\"HIDKeyboardModifierMappingDst\":\(dst)}"
         }
+        UserDefaults.standard.set(true, forKey: dirtyKey)
         run(json: "{\"UserKeyMapping\":[\(entries.joined(separator: ","))]}")
     }
 
     static func reset() {
         run(json: "{\"UserKeyMapping\":[]}")
+        UserDefaults.standard.removeObject(forKey: dirtyKey)
     }
 
     private static func run(json: String) {
