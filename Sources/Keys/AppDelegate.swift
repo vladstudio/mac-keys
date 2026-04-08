@@ -57,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
 
-        toggleItem = NSMenuItem(title: "Keys is ON", action: #selector(toggle), keyEquivalent: "")
+        toggleItem = NSMenuItem(title: "Keys is On", action: #selector(toggle), keyEquivalent: "")
         toggleItem.target = self
         menu.addItem(toggleItem)
 
@@ -110,7 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggle() {
         interceptor.isEnabled.toggle()
-        toggleItem.title = interceptor.isEnabled ? "Keys is ON" : "Keys is OFF"
+        toggleItem.title = interceptor.isEnabled ? "Keys is On" : "Keys is Off"
         updateIcon()
     }
 
@@ -212,7 +212,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         interceptor.stop()
         guard permissionTimer == nil else { return }
 
-        toggleItem.title = "Keys is OFF (no permission)"
+        toggleItem.title = "Keys is Off (no permission)"
         toggleItem.action = nil
 
         let menu = statusItem.menu!
@@ -279,7 +279,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         inputMonitoringItem = nil
         permissionSeparator = nil
 
-        toggleItem.title = "Keys is ON"
+        toggleItem.title = "Keys is On"
         toggleItem.action = #selector(toggle)
 
         configManager.load()
