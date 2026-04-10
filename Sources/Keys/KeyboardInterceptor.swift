@@ -12,10 +12,13 @@ class KeyboardInterceptor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var internalKeyboardTypes = Set<Int64>()
+    private var mediaKeyMonitor: IOHIDManager?
+    fileprivate var lastMediaKeyIsInternal: Bool?
     var keystrokeOverlay: KeystrokeOverlay?
     var onPermissionLost: (() -> Void)?
 
     func start() -> Bool {
+        startMediaKeyMonitoring()
         guard eventTap == nil else { return true }
         remapEngine.reset()
         let eventMask: CGEventMask =
@@ -103,6 +106,25 @@ class KeyboardInterceptor {
         HIDManager.apply(mappings: hidMappings)
     }
 
+    // MARK: - Media key device tracking
+
+    /// Monitor consumer control HID devices to determine which keyboard generates media key events.
+    /// NX_SYSDEFINED events don't carry keyboard type, so we track it via IOHIDManager callbacks
+    /// which fire before the CGEventTap sees the corresponding NX_SYSDEFINED event.
+    private func startMediaKeyMonitoring() {
+        guard mediaKeyMonitor == nil else { return }
+        let manager = IOHIDManagerCreate(kCFAllocatorDefault, 0)
+        IOHIDManagerSetDeviceMatching(manager, [
+            "DeviceUsagePage": 0x0C, // Consumer
+            "DeviceUsage": 1,        // Consumer Control
+        ] as CFDictionary)
+        let ctx = Unmanaged.passUnretained(self).toOpaque()
+        IOHIDManagerRegisterInputValueCallback(manager, mediaKeyHIDCallback, ctx)
+        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        _ = IOHIDManagerOpen(manager, 0)
+        mediaKeyMonitor = manager
+    }
+
     // MARK: - Event handling
 
     fileprivate func handleEvent(
@@ -131,9 +153,8 @@ class KeyboardInterceptor {
             let data1 = nsEvent.data1
             let keyType = Int32((data1 >> 16) & 0xFFFF)
             let isDown = ((data1 >> 8) & 0xFF) == 0x0A
-            // Use keyboard type from the event when available (non-zero); fall back to nil (all-only)
-            let mediaInternal: Bool? = kbType != 0 ? isInternal : nil
-            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown, isInternal: mediaInternal), pass: pass)
+            // NX_SYSDEFINED events don't carry keyboard type — use IOHIDManager-tracked device info
+            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown, isInternal: lastMediaKeyIsInternal), pass: pass)
         }
 
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
@@ -208,6 +229,19 @@ class KeyboardInterceptor {
             return pass
         }
     }
+}
+
+private func mediaKeyHIDCallback(
+    context: UnsafeMutableRawPointer?,
+    result: IOReturn,
+    sender: UnsafeMutableRawPointer?,
+    value: IOHIDValue
+) {
+    guard let context, let sender else { return }
+    let interceptor = Unmanaged<KeyboardInterceptor>.fromOpaque(context).takeUnretainedValue()
+    let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
+    let builtIn = IOHIDDeviceGetProperty(device, "Built-In" as CFString)
+    interceptor.lastMediaKeyIsInternal = (builtIn as? NSNumber)?.boolValue ?? false
 }
 
 private func tapCallback(
