@@ -131,8 +131,9 @@ class KeyboardInterceptor {
             let data1 = nsEvent.data1
             let keyType = Int32((data1 >> 16) & 0xFFFF)
             let isDown = ((data1 >> 8) & 0xFF) == 0x0A
-            // NX_SYSDEFINED events don't carry valid keyboard type — only apply [remap] rules
-            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown, isInternal: nil), pass: pass)
+            // Use keyboard type from the event when available (non-zero); fall back to nil (all-only)
+            let mediaInternal: Bool? = kbType != 0 ? isInternal : nil
+            return dispatch(remapEngine.handleMediaKey(keyType: keyType, isDown: isDown, isInternal: mediaInternal), pass: pass)
         }
 
         if event.getIntegerValueField(.eventSourceUserData) == EventEmitter.marker {
